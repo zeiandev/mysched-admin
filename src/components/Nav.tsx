@@ -11,6 +11,7 @@ export default function Nav() {
       <Link href="/dashboard">Dashboard</Link>
       <Link href="/sections">Sections</Link>
       <Link href="/classes">Classes</Link>
+      <Link href="/admins">Admins</Link>
       <button onClick={logout} className="ml-auto border px-3 rounded">Logout</button>
     </nav>
   );

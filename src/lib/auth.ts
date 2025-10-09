@@ -1,4 +1,5 @@
 import { supaServer } from '@/lib/supabase/server';
+
 export async function requireAdmin() {
   const s = supaServer();
   const { data: { user } } = await s.auth.getUser();
