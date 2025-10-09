@@ -2,10 +2,11 @@
 import { useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 
-const supa = () => createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const supa = () =>
+  createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
 type Section = { id: number; code: string };
 
@@ -16,23 +17,34 @@ export default function SectionsClient({ initial }: { initial: Section[] }) {
   async function createSection(e: React.FormEvent) {
     e.preventDefault();
     if (!code.trim()) return;
+
     const { data, error } = await supa()
       .from('sections')
       .insert({ code })
       .select('id, code')
       .single();
-    if (error) return alert(error.message);
-    setRows([...rows, data!]);
+
+    if (error) {
+      // @ts-expect-error supabase error has code
+      if (error.code === '23505') return alert('Section code already exists');
+      return alert(error.message);
+    }
+
+    setRows([...rows, data as Section]);
     setCode('');
   }
 
   async function updateSection(id: number, code: string) {
     const { error } = await supa().from('sections').update({ code }).eq('id', id);
-    if (error) alert(error.message);
+    if (error) {
+      // @ts-expect-error supabase error has code
+      if (error.code === '23505') return alert('Section code already exists');
+      alert(error.message);
+    }
   }
 
   async function deleteSection(id: number) {
-    if (!confirm('Delete section?')) return;
+    if (!confirm('Delete section and its classes?')) return;
     const { error } = await supa().from('sections').delete().eq('id', id);
     if (error) return alert(error.message);
     setRows(rows.filter(r => r.id !== id));
@@ -47,7 +59,7 @@ export default function SectionsClient({ initial }: { initial: Section[] }) {
           className="border rounded p-2 flex-1"
           placeholder="e.g., BSCS-2A-2025"
           value={code}
-          onChange={e=>setCode(e.target.value)}
+          onChange={e => setCode(e.target.value)}
         />
         <button className="border rounded px-3">Add</button>
       </form>
@@ -60,7 +72,10 @@ export default function SectionsClient({ initial }: { initial: Section[] }) {
               defaultValue={r.code}
               onBlur={e => updateSection(r.id, e.currentTarget.value)}
             />
-            <button className="border rounded px-3" onClick={() => deleteSection(r.id)}>
+            <button
+              className="border rounded px-3"
+              onClick={() => deleteSection(r.id)}
+            >
               Delete
             </button>
           </li>
