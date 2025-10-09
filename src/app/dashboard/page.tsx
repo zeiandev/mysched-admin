@@ -1,13 +1,10 @@
 import { requireAdmin } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
 
 export default async function Dashboard() {
   const gate = await requireAdmin();
-  if (!gate.ok) return (
-    <main className="p-6">
-      <p>Not authorized. <a href="/login" className="underline">Login</a></p>
-    </main>
-  );
+  if (!gate.ok) redirect('/login');
 
   return (
     <main className="p-6 space-y-4">
