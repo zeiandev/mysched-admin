@@ -5,16 +5,23 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
 
+  // cookie adapter to satisfy @supabase/ssr types
+  const cookiesAdapter: any = {
+    get(name: string) {
+      return req.cookies.get(name)?.value;
+    },
+    set(name: string, value: string, options: CookieOptions) {
+      res.cookies.set({ name, value, ...options } as any);
+    },
+    remove(name: string, options: CookieOptions) {
+      res.cookies.set({ name, value: '', ...options } as any);
+    },
+  };
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get: (n: string) => req.cookies.get(n)?.value,
-        set: (n: string, v: string, o: CookieOptions) => res.cookies.set({ name: n, value: v, ...o }),
-        remove: (n: string, o: CookieOptions) => res.cookies.set({ name: n, value: '', ...o }),
-      },
-    }
+    { cookies: cookiesAdapter }
   );
 
   const { data: { user } } = await supabase.auth.getUser();
