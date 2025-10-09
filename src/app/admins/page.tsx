@@ -1,7 +1,8 @@
 import { requireAdmin } from '../../lib/auth';
+import { redirect } from 'next/navigation';
 import { supaServer } from '../../lib/supabase/server';
 import Nav from '../../components/Nav';
-import { redirect } from 'next/navigation';
+import AdminsClient from './admins-client';
 
 type AdminRow = { user_id: string; email: string; created_at: string };
 
