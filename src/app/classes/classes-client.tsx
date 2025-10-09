@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
+import type { PostgrestError } from '@supabase/supabase-js';
 
 const supa = () =>
   createBrowserClient(
@@ -78,11 +79,9 @@ export default function ClassesClient({
       .single();
 
     if (error) {
-      // unique violation
-      // @ts-expect-error supabase error has code
-      if (error.code === '23505')
+    if ((error as PostgrestError).code === '23505')
         return alert('Duplicate class for same section/day/time/title');
-      return alert(error.message);
+    return alert(error.message);
     }
 
     setRows([...rows, data as ClassRow]);

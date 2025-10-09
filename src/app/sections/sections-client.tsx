@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
+import type { PostgrestError } from '@supabase/supabase-js';
 
 const supa = () =>
   createBrowserClient(
@@ -25,9 +26,9 @@ export default function SectionsClient({ initial }: { initial: Section[] }) {
       .single();
 
     if (error) {
-      // @ts-expect-error supabase error has code
-      if (error.code === '23505') return alert('Section code already exists');
-      return alert(error.message);
+    if ((error as PostgrestError).code === '23505')
+        return alert('Section code already exists');
+    return alert(error.message);
     }
 
     setRows([...rows, data as Section]);
@@ -37,9 +38,9 @@ export default function SectionsClient({ initial }: { initial: Section[] }) {
   async function updateSection(id: number, code: string) {
     const { error } = await supa().from('sections').update({ code }).eq('id', id);
     if (error) {
-      // @ts-expect-error supabase error has code
-      if (error.code === '23505') return alert('Section code already exists');
-      alert(error.message);
+    if ((error as PostgrestError).code === '23505')
+        return alert('Section code already exists');
+    alert(error.message);
     }
   }
 
