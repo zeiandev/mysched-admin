@@ -2,13 +2,13 @@ import { requireAdmin } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { supaServer } from '@/lib/supabase/server';
 import ClassesClient from './classes-client';
+import Nav from '@/components/Nav';
 
 type Section = { id: number; code: string };
 type ClassRow = { id:number; section_id:number; day:string; start:string; end:string; code:string|null; title:string; units:number|null; room:string|null; instructor:string|null; };
 
 export default async function ClassesPage() {
-  const gate = await requireAdmin();
-  if (!gate.ok) redirect('/login');
+  const gate = await requireAdmin(); if (!gate.ok) redirect('/login');
 
   const s = supaServer();
   const { data: sectionsData } = await s.from('sections').select('id, code').order('id');
@@ -16,8 +16,14 @@ export default async function ClassesPage() {
   const activeSectionId = sections[0]?.id ?? null;
 
   const { data: classesData } = activeSectionId
-    ? await s.from('classes').select('id, section_id, day, start, end, code, title, units, room, instructor').eq('section_id', activeSectionId).order('id')
+    ? await s.from('classes')
+        .select('id, section_id, day, start, end, code, title, units, room, instructor')
+        .eq('section_id', activeSectionId)
+        .order('id')
     : { data: [] as ClassRow[] };
 
-  return <ClassesClient sections={sections} initialSectionId={activeSectionId} initialClasses={(classesData ?? []) as ClassRow[]} />;
+  return (<>
+    <Nav />
+    <ClassesClient sections={sections} initialSectionId={activeSectionId} initialClasses={(classesData ?? []) as ClassRow[]} />
+  </>);
 }
