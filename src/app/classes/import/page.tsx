@@ -1,8 +1,8 @@
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin } from '../../../lib/auth';
+import { supaServer } from '../../../lib/supabase/server';
+import Nav from '../../../components/Nav';
 import { redirect } from 'next/navigation';
-import { supaServer } from '@/lib/supabase/server';
 import ImportClient from './import-client';
-import Nav from '@/components/Nav';
 
 export default async function ImportPage() {
   const gate = await requireAdmin(); if (!gate.ok) redirect('/login');
