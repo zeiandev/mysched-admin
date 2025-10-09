@@ -28,26 +28,22 @@ export default async function GridPage() {
     .select('id, code')
     .order('id');
 
-  // Force to a non-null array
-  const sections: Section[] = Array.isArray(sectionsData)
-    ? (sectionsData as Section[])
-    : [];
+  // Force non-null array
+  const sections: Section[] = (sectionsData ?? []) as Section[];
 
-  // Safe first ID
-  const first = sections.length > 0 ? sections[0] : undefined;
-  const initialSectionId: number | null = first ? first.id : null;
+  // SAFE: no optional chaining on possibly-null array
+  const initialSectionId: number | null =
+    sections.length > 0 ? sections[0].id : null;
 
   let initial: { [k: string]: any }[] = [];
   if (initialSectionId !== null) {
     const { data } = await s
       .from('classes')
-      .select(
-        'id, section_id, day, start, end, code, title, room, instructor'
-      )
+      .select('id, section_id, day, start, end, code, title, room, instructor')
       .eq('section_id', initialSectionId)
       .order('day, start, id');
 
-    const raw = (Array.isArray(data) ? data : []) as DbClass[];
+    const raw = (data ?? []) as DbClass[];
     initial = raw.map((r) => ({ ...r, day: Number(r.day) }));
   }
 
