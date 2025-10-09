@@ -41,7 +41,7 @@ export default function ClassesClient({
     end: '',
     code: '',
     title: '',
-    units: 0,
+    units: null,
     room: '',
     instructor: '',
   });
@@ -61,10 +61,7 @@ export default function ClassesClient({
       const cleaned = (data ?? []).map((r: any) => ({
         ...r,
         day: Number(r.day),
-        units:
-          r.units === null || r.units === undefined || r.units === ''
-            ? null
-            : Number(r.units),
+        units: r.units == null ? null : Number(r.units),
       })) as ClassRow[];
       setRows(cleaned);
     })();
@@ -94,10 +91,7 @@ export default function ClassesClient({
 
     const d = data as any as ClassRow;
     d.day = Number(d.day);
-    d.units =
-      d.units === null || d.units === undefined || d.units === ''
-        ? null
-        : Number(d.units);
+    d.units = d.units == null ? null : Number(d.units);
 
     setRows([...rows, d]);
     setForm((f) => ({
