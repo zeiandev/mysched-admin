@@ -122,13 +122,6 @@ export default function Login() {
           >
             {loading ? 'Signing in…' : 'Sign In'}
           </button>
-
-          <p className="text-center text-[13px] text-gray-600">
-            Don’t have an account?{' '}
-            <span className="text-sky-600 font-medium hover:underline">
-              Register here.
-            </span>
-          </p>
         </form>
       </div>
     </main>
