@@ -21,4 +21,3 @@ export default async function ClassesPage() {
 
   return <ClassesClient sections={sections} initialSectionId={activeSectionId} initialClasses={(classesData ?? []) as ClassRow[]} />;
 }
-s
