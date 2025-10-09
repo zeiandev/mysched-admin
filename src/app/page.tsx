@@ -1,1 +1,2 @@
-export default function Home() { return <main className="p-6">mysched-admin</main>; }
+import { redirect } from 'next/navigation';
+export default function Home() { redirect('/login'); }
