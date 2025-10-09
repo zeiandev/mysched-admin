@@ -17,6 +17,19 @@ type DbClass = {
   instructor: string | null;
 };
 
+/** Must match Row in grid-client.tsx */
+type GridRow = {
+  id: number;
+  section_id: number;
+  day: number;
+  start: string;
+  end: string;
+  title: string;
+  code: string | null;
+  room: string | null;
+  instructor: string | null;
+};
+
 export default async function GridPage() {
   const gate = await requireAdmin();
   if (!gate.ok) redirect('/login');
@@ -28,14 +41,12 @@ export default async function GridPage() {
     .select('id, code')
     .order('id');
 
-  // Force non-null array
   const sections: Section[] = (sectionsData ?? []) as Section[];
 
-  // SAFE: no optional chaining on possibly-null array
   const initialSectionId: number | null =
     sections.length > 0 ? sections[0].id : null;
 
-  let initial: { [k: string]: any }[] = [];
+  let initial: GridRow[] = [];
   if (initialSectionId !== null) {
     const { data } = await s
       .from('classes')
@@ -44,7 +55,17 @@ export default async function GridPage() {
       .order('day, start, id');
 
     const raw = (data ?? []) as DbClass[];
-    initial = raw.map((r) => ({ ...r, day: Number(r.day) }));
+    initial = raw.map((r) => ({
+      id: r.id,
+      section_id: r.section_id,
+      day: Number(r.day),
+      start: r.start,
+      end: r.end,
+      title: r.title,
+      code: r.code,
+      room: r.room,
+      instructor: r.instructor,
+    }));
   }
 
   return (
