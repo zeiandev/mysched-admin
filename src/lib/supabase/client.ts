@@ -1,4 +1,5 @@
 import { createBrowserClient } from '@supabase/ssr';
+
 export const supa = () =>
   createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
