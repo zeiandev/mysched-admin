@@ -10,25 +10,22 @@ export async function middleware(req: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) { return req.cookies.get(name)?.value; },
-        set(name: string, value: string, options: CookieOptions) {
-          res.cookies.set({ name, value, ...options });
-        },
-        remove(name: string, options: CookieOptions) {
-          res.cookies.set({ name, value: '', ...options });
-        },
+        get: (n: string) => req.cookies.get(n)?.value,
+        set: (n: string, v: string, o: CookieOptions) => res.cookies.set({ name: n, value: v, ...o }),
+        remove: (n: string, o: CookieOptions) => res.cookies.set({ name: n, value: '', ...o }),
       },
     }
   );
 
   const { data: { user } } = await supabase.auth.getUser();
   const isAuth = !!user;
-  const path = req.nextUrl.pathname;
-  const protectedPaths = ['/dashboard', '/sections', '/classes'];
-  const isProtected = protectedPaths.some(p => path.startsWith(p));
-  const isLogin = path === '/login';
+  const p = req.nextUrl.pathname;
 
-  if (!isAuth && isProtected) {
+  const protect = ['/dashboard', '/sections', '/classes', '/admins'].some(x => p.startsWith(x));
+  const apiProtect = p === '/api/classes/import';
+  const isLogin = p === '/login';
+
+  if (!isAuth && (protect || apiProtect)) {
     const url = req.nextUrl.clone(); url.pathname = '/login';
     return NextResponse.redirect(url);
   }
@@ -40,5 +37,12 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/sections/:path*', '/classes/:path*', '/login'],
+  matcher: [
+    '/dashboard/:path*',
+    '/sections/:path*',
+    '/classes/:path*',
+    '/admins/:path*',
+    '/api/classes/import',
+    '/login',
+  ],
 };
