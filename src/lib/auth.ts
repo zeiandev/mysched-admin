@@ -1,4 +1,4 @@
-import { supaServer } from '@/lib/supabase/server';
+import { supaServer } from './supabase/server';
 
 export async function requireAdmin() {
   const s = supaServer();

@@ -1,7 +1,7 @@
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin } from '../../lib/auth';
 import { redirect } from 'next/navigation';
-import { supaServer } from '@/lib/supabase/server';
-import Nav from '@/components/Nav';
+import { supaServer } from '../../lib/supabase/server';
+import Nav from '../../components/Nav';
 import ClassesClient from './classes-client';
 
 type Section = { id: number; code: string };
@@ -24,11 +24,7 @@ export default async function ClassesPage() {
 
   const s = supaServer();
 
-  const { data: sectionsData } = await s
-    .from('sections')
-    .select('id, code')
-    .order('id');
-
+  const { data: sectionsData } = await s.from('sections').select('id, code').order('id');
   const sections: Section[] = (sectionsData ?? []) as Section[];
   const activeSectionId = sections[0]?.id ?? null;
 
@@ -36,20 +32,15 @@ export default async function ClassesPage() {
   if (activeSectionId) {
     const { data } = await s
       .from('classes')
-      .select(
-        'id, section_id, day, start, end, code, title, units, room, instructor'
-      )
+      .select('id, section_id, day, start, end, code, title, units, room, instructor')
       .eq('section_id', activeSectionId)
       .order('id');
 
     const raw = (data ?? []) as DbClass[];
-    classesClean = raw.map((r) => ({
+    classesClean = raw.map(r => ({
       ...r,
       day: Number(r.day),
-      units:
-        r.units === null || r.units === undefined || r.units === ''
-          ? null
-          : Number(r.units),
+      units: r.units == null ? null : Number(r.units),
     }));
   }
 

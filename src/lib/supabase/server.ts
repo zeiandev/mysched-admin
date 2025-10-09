@@ -10,7 +10,7 @@ export const supaServer = () => {
     },
     remove(name: string, options: CookieOptions) {
       store.set({ name, value: '', ...options } as any);
-    }
+    },
   };
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

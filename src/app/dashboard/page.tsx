@@ -1,10 +1,12 @@
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin } from '../../lib/auth';
 import { redirect } from 'next/navigation';
+import Nav from '../../components/Nav';
 import Link from 'next/link';
-import Nav from '@/components/Nav';
 
 export default async function Dashboard() {
-  const gate = await requireAdmin(); if (!gate.ok) redirect('/login');
+  const gate = await requireAdmin();
+  if (!gate.ok) redirect('/login');
+
   return (
     <>
       <Nav />
@@ -13,6 +15,7 @@ export default async function Dashboard() {
         <ul className="list-disc pl-6">
           <li><Link className="underline" href="/sections">Manage Sections</Link></li>
           <li><Link className="underline" href="/classes">Manage Classes</Link></li>
+          <li><Link className="underline" href="/admins">Manage Admins</Link></li>
         </ul>
       </main>
     </>
