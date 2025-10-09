@@ -48,7 +48,7 @@ export default function ClassesClient({
 
   useEffect(() => {
     if (!sectionId) return;
-    setForm(f => ({ ...f, section_id: sectionId }));
+    setForm((f) => ({ ...f, section_id: sectionId }));
     (async () => {
       const { data, error } = await supa()
         .from('classes')
@@ -58,7 +58,15 @@ export default function ClassesClient({
         .eq('section_id', sectionId)
         .order('id');
       if (error) return alert(error.message);
-      setRows((data ?? []) as ClassRow[]);
+      const cleaned = (data ?? []).map((r: any) => ({
+        ...r,
+        day: Number(r.day),
+        units:
+          r.units === null || r.units === undefined || r.units === ''
+            ? null
+            : Number(r.units),
+      })) as ClassRow[];
+      setRows(cleaned);
     })();
   }, [sectionId]);
 
@@ -79,13 +87,20 @@ export default function ClassesClient({
       .single();
 
     if (error) {
-    if ((error as PostgrestError).code === '23505')
+      if ((error as PostgrestError).code === '23505')
         return alert('Duplicate class for same section/day/time/title');
-    return alert(error.message);
+      return alert(error.message);
     }
 
-    setRows([...rows, data as ClassRow]);
-    setForm(f => ({
+    const d = data as any as ClassRow;
+    d.day = Number(d.day);
+    d.units =
+      d.units === null || d.units === undefined || d.units === ''
+        ? null
+        : Number(d.units);
+
+    setRows([...rows, d]);
+    setForm((f) => ({
       ...f,
       day: 0,
       start: '',
@@ -107,12 +122,12 @@ export default function ClassesClient({
     if (!confirm('Delete class?')) return;
     const { error } = await supa().from('classes').delete().eq('id', id);
     if (error) return alert(error.message);
-    setRows(rows.filter(r => r.id !== id));
+    setRows(rows.filter((r) => r.id !== id));
   }
 
   const sectionOptions = useMemo(
     () =>
-      sections.map(s => (
+      sections.map((s) => (
         <option key={s.id} value={s.id}>
           {s.code}
         </option>
@@ -134,7 +149,7 @@ export default function ClassesClient({
         <select
           className="border rounded p-2"
           value={sectionId ?? ''}
-          onChange={e => setSectionId(Number(e.target.value))}
+          onChange={(e) => setSectionId(Number(e.target.value))}
         >
           {sectionId == null && <option value="">Select section</option>}
           {sectionOptions}
@@ -145,7 +160,7 @@ export default function ClassesClient({
         <select
           className="border p-2 rounded col-span-1"
           value={form.day || ''}
-          onChange={e => setForm({ ...form, day: Number(e.target.value) })}
+          onChange={(e) => setForm({ ...form, day: Number(e.target.value) })}
         >
           <option value="">Day</option>
           <option value="1">Mon</option>
@@ -161,44 +176,44 @@ export default function ClassesClient({
           className="border p-2 rounded col-span-1"
           type="time"
           value={form.start}
-          onChange={e => setForm({ ...form, start: e.target.value })}
+          onChange={(e) => setForm({ ...form, start: e.target.value })}
         />
         <input
           className="border p-2 rounded col-span-1"
           type="time"
           value={form.end}
-          onChange={e => setForm({ ...form, end: e.target.value })}
+          onChange={(e) => setForm({ ...form, end: e.target.value })}
         />
         <input
           className="border p-2 rounded col-span-1"
           placeholder="Code"
           value={form.code ?? ''}
-          onChange={e => setForm({ ...form, code: e.target.value })}
+          onChange={(e) => setForm({ ...form, code: e.target.value })}
         />
         <input
           className="border p-2 rounded col-span-2"
           placeholder="Title"
           value={form.title}
-          onChange={e => setForm({ ...form, title: e.target.value })}
+          onChange={(e) => setForm({ ...form, title: e.target.value })}
         />
         <input
           className="border p-2 rounded col-span-1"
           type="number"
           placeholder="Units"
           value={form.units ?? 0}
-          onChange={e => setForm({ ...form, units: Number(e.target.value) })}
+          onChange={(e) => setForm({ ...form, units: Number(e.target.value) })}
         />
         <input
           className="border p-2 rounded col-span-1"
           placeholder="Room"
           value={form.room ?? ''}
-          onChange={e => setForm({ ...form, room: e.target.value })}
+          onChange={(e) => setForm({ ...form, room: e.target.value })}
         />
         <input
           className="border p-2 rounded col-span-2"
           placeholder="Instructor"
           value={form.instructor ?? ''}
-          onChange={e => setForm({ ...form, instructor: e.target.value })}
+          onChange={(e) => setForm({ ...form, instructor: e.target.value })}
         />
         <button className="border rounded px-3 col-span-1">Add</button>
       </form>
@@ -219,13 +234,13 @@ export default function ClassesClient({
             </tr>
           </thead>
           <tbody>
-            {rows.map(r => (
+            {rows.map((r) => (
               <tr key={r.id}>
                 <td className="border p-1">
                   <input
                     className="w-24 border p-1 rounded"
                     defaultValue={String(r.day)}
-                    onBlur={e =>
+                    onBlur={(e) =>
                       updateField(r.id, { day: Number(e.currentTarget.value) })
                     }
                   />
@@ -235,7 +250,9 @@ export default function ClassesClient({
                     className="w-24 border p-1 rounded"
                     type="time"
                     defaultValue={r.start}
-                    onBlur={e => updateField(r.id, { start: e.currentTarget.value })}
+                    onBlur={(e) =>
+                      updateField(r.id, { start: e.currentTarget.value })
+                    }
                   />
                 </td>
                 <td className="border p-1">
@@ -243,21 +260,27 @@ export default function ClassesClient({
                     className="w-24 border p-1 rounded"
                     type="time"
                     defaultValue={r.end}
-                    onBlur={e => updateField(r.id, { end: e.currentTarget.value })}
+                    onBlur={(e) =>
+                      updateField(r.id, { end: e.currentTarget.value })
+                    }
                   />
                 </td>
                 <td className="border p-1">
                   <input
                     className="w-24 border p-1 rounded"
                     defaultValue={r.code ?? ''}
-                    onBlur={e => updateField(r.id, { code: e.currentTarget.value })}
+                    onBlur={(e) =>
+                      updateField(r.id, { code: e.currentTarget.value })
+                    }
                   />
                 </td>
                 <td className="border p-1">
                   <input
                     className="w-64 border p-1 rounded"
                     defaultValue={r.title}
-                    onBlur={e => updateField(r.id, { title: e.currentTarget.value })}
+                    onBlur={(e) =>
+                      updateField(r.id, { title: e.currentTarget.value })
+                    }
                   />
                 </td>
                 <td className="border p-1">
@@ -265,7 +288,7 @@ export default function ClassesClient({
                     className="w-16 border p-1 rounded"
                     type="number"
                     defaultValue={r.units ?? 0}
-                    onBlur={e =>
+                    onBlur={(e) =>
                       updateField(r.id, { units: Number(e.currentTarget.value) })
                     }
                   />
@@ -274,14 +297,16 @@ export default function ClassesClient({
                   <input
                     className="w-24 border p-1 rounded"
                     defaultValue={r.room ?? ''}
-                    onBlur={e => updateField(r.id, { room: e.currentTarget.value })}
+                    onBlur={(e) =>
+                      updateField(r.id, { room: e.currentTarget.value })
+                    }
                   />
                 </td>
                 <td className="border p-1">
                   <input
                     className="w-40 border p-1 rounded"
                     defaultValue={r.instructor ?? ''}
-                    onBlur={e =>
+                    onBlur={(e) =>
                       updateField(r.id, { instructor: e.currentTarget.value })
                     }
                   />
