@@ -61,9 +61,9 @@ export default function Login() {
           <div className="text-[28px] font-bold tracking-tight">
             <span className="text-sky-500">My</span>Sched
           </div>
-          <h1 className="text-[22px] font-semibold mt-3">Login</h1>
+          <h1 className="text-[22px] font-semibold mt-3">Admin Login</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Access your student account.
+            Sign in to manage schedules and users.
           </p>
         </div>
 
