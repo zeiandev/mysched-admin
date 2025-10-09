@@ -27,24 +27,38 @@ export default function Login() {
   }
 
   return (
-    <main className="min-h-screen bg-white grid place-items-center px-6">
-      <div className="w-full max-w-md">
-        {/* Back chevron area reserved in design */}
-        <div className="h-6" />
+    <main className="min-h-screen bg-white grid place-items-center px-6 font-[system-ui] text-gray-900">
+      <style jsx global>{`
+        @font-face {
+          font-family: 'SF Pro Display';
+          font-weight: 400;
+          src: local('SF Pro Display Regular'), url('/fonts/SF-Pro-Display-Regular.woff2') format('woff2');
+        }
+        @font-face {
+          font-family: 'SF Pro Display';
+          font-weight: 600;
+          src: local('SF Pro Display Semibold'), url('/fonts/SF-Pro-Display-Semibold.woff2') format('woff2');
+        }
+        body {
+          font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont,
+            'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+      `}</style>
 
-        {/* Brand */}
-        <div className="text-center mb-6">
-          <div className="text-[28px] font-semibold">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-10">
+          <div className="text-[28px] font-semibold tracking-tight">
             <span className="text-sky-500">My</span>Sched
           </div>
-          <h1 className="text-2xl font-semibold mt-3">Login</h1>
-          <p className="text-sm text-gray-600 mt-1">Access your student account.</p>
+          <h1 className="text-[22px] font-semibold mt-3">Login</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Access your student account.
+          </p>
         </div>
 
-        {/* Card */}
         <form
           onSubmit={onSubmit}
-          className="bg-white border rounded-2xl shadow-sm p-5 space-y-4"
+          className="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 space-y-5"
         >
           {err && (
             <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2">
@@ -52,44 +66,43 @@ export default function Login() {
             </div>
           )}
 
-          <div className="space-y-1.5">
-            <label className="text-sm text-gray-700">Email</label>
+          <div className="space-y-1">
+            <label className="text-[13px] font-medium text-gray-700">Email</label>
             <input
-              className="w-full rounded-xl border border-gray-300 px-3 py-2.5 outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-[15px] focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all"
               type="email"
-              placeholder="Email"
+              placeholder="example@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
               required
+              autoComplete="email"
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm text-gray-700">Password</label>
+          <div className="space-y-1">
+            <label className="text-[13px] font-medium text-gray-700">Password</label>
             <div className="relative">
               <input
-                className="w-full rounded-xl border border-gray-300 px-3 py-2.5 pr-12 outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-[15px] focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all pr-16"
                 type={show ? 'text' : 'password'}
-                placeholder="Password"
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
                 required
+                autoComplete="current-password"
               />
               <button
                 type="button"
-                onClick={() => setShow((v) => !v)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-600 px-2 py-1 rounded hover:bg-gray-100"
-                aria-label={show ? 'Hide password' : 'Show password'}
+                onClick={() => setShow(!show)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-500 hover:text-gray-700 font-medium"
               >
                 {show ? 'Hide' : 'Show'}
               </button>
             </div>
           </div>
 
-          <div className="flex justify-end -mt-1">
-            <a href="#" className="text-sm text-sky-700 hover:underline">
+          <div className="flex justify-end">
+            <a href="#" className="text-[13px] text-sky-600 hover:underline font-medium">
               Forgot your password?
             </a>
           </div>
@@ -97,13 +110,16 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl bg-[#0A2B52] text-white py-3 font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full bg-[#0A2B52] text-white rounded-xl py-3 text-[16px] font-semibold tracking-tight shadow-sm active:scale-[.98] transition disabled:opacity-60"
           >
             {loading ? 'Signing in…' : 'Sign In'}
           </button>
 
-          <p className="text-center text-sm text-gray-600">
-            Don’t have an account? <span className="text-sky-700">Register here.</span>
+          <p className="text-center text-[13px] text-gray-600">
+            Don’t have an account?{' '}
+            <span className="text-sky-600 font-medium hover:underline">
+              Register here.
+            </span>
           </p>
         </form>
       </div>
