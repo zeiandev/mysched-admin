@@ -34,6 +34,7 @@ export default function ClassesClient({
 }) {
   const [sectionId, setSectionId] = useState<number | null>(initialSectionId);
   const [rows, setRows] = useState<ClassRow[]>(initialClasses);
+  const [q, setQ] = useState('');
   const [form, setForm] = useState<Omit<ClassRow, 'id'>>({
     section_id: initialSectionId ?? 0,
     day: 0,
@@ -45,6 +46,26 @@ export default function ClassesClient({
     room: '',
     instructor: '',
   });
+
+  // derived
+  const filtered = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    if (!s) return rows;
+    return rows.filter((r) =>
+      [r.title, r.code ?? '', r.room ?? '', r.instructor ?? '']
+        .some((v) => v.toLowerCase().includes(s))
+    );
+  }, [rows, q]);
+
+  const sectionOptions = useMemo(
+    () =>
+      sections.map((s) => (
+        <option key={s.id} value={s.id}>
+          {s.code}
+        </option>
+      )),
+    [sections]
+  );
 
   useEffect(() => {
     if (!sectionId) return;
@@ -66,6 +87,35 @@ export default function ClassesClient({
       setRows(cleaned);
     })();
   }, [sectionId]);
+
+  function toCSV(list: ClassRow[]) {
+    const head = 'day,start,end,code,title,units,room,instructor';
+    const body = list
+      .map((r) =>
+        [
+          r.day,
+          r.start,
+          r.end,
+          r.code ?? '',
+          r.title,
+          r.units ?? '',
+          r.room ?? '',
+          r.instructor ?? '',
+        ].join(',')
+      )
+      .join('\n');
+    return head + '\n' + body;
+  }
+
+  function downloadCSV() {
+    const csv = toCSV(filtered);
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(blob),
+      download: 'classes.csv',
+    });
+    a.click();
+  }
 
   async function createClass(e: React.FormEvent) {
     e.preventDefault();
@@ -101,7 +151,7 @@ export default function ClassesClient({
       end: '',
       code: '',
       title: '',
-      units: 0,
+      units: null,
       room: '',
       instructor: '',
     }));
@@ -118,16 +168,6 @@ export default function ClassesClient({
     if (error) return alert(error.message);
     setRows(rows.filter((r) => r.id !== id));
   }
-
-  const sectionOptions = useMemo(
-    () =>
-      sections.map((s) => (
-        <option key={s.id} value={s.id}>
-          {s.code}
-        </option>
-      )),
-    [sections]
-  );
 
   return (
     <main className="p-6 space-y-4 max-w-5xl">
@@ -148,6 +188,17 @@ export default function ClassesClient({
           {sectionId == null && <option value="">Select section</option>}
           {sectionOptions}
         </select>
+
+        <input
+          className="border rounded p-2 ml-4"
+          placeholder="Search title, code, room, instructor"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+
+        <button className="border rounded px-3" onClick={downloadCSV}>
+          Export CSV
+        </button>
       </div>
 
       <form onSubmit={createClass} className="grid grid-cols-8 gap-2 items-center">
@@ -228,7 +279,7 @@ export default function ClassesClient({
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {filtered.map((r) => (
               <tr key={r.id}>
                 <td className="border p-1">
                   <input
