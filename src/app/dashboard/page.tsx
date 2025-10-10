@@ -1,5 +1,5 @@
 // src/app/dashboard/page.tsx
-import { requireAdmin } from "../../lib/Auth";
+import { requireAdmin } from '../../lib/auth';
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import LogoutButton from "../../components/LogoutButton";
