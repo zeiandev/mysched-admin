@@ -2,18 +2,17 @@ import { requireAdmin } from '../../lib/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import LogoutButton from '../../components/LogoutButton';
+import SentryTest from '../../components/SentryTest'; // add this line
 
 export default async function Dashboard() {
   const gate = await requireAdmin();
   if (!gate.ok) redirect('/login');
 
-  // Temporary Sentry test — remove after confirming event
-  if (typeof window !== "undefined") {
-    throw new Error("Sentry manual test error");
-  }
-
   return (
     <main className="min-h-screen bg-white text-gray-900 flex flex-col items-center px-6 py-10">
+      {/* TEMPORARY: triggers a test error for Sentry */}
+      <SentryTest />
+
       <header className="w-full max-w-2xl flex items-center justify-between mb-8">
         <div>
           <h1 className="text-[24px] font-semibold tracking-tight">Dashboard</h1>
