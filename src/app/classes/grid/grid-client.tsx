@@ -39,65 +39,51 @@ export default function GridClient({
   initialSectionId: number | null;
   initial: Row[];
 }) {
-  const [sectionId, setSectionId] = useState<number | ''>(
-    initialSectionId ?? ''
-  );
+  const [sectionId, setSectionId] = useState<number | ''>(initialSectionId ?? '');
   const [rows, setRows] = useState<Row[]>(initial ?? []);
-  const [ppm, setPpm] = useState(2); // pixels per minute (zoom)
+  const [ppm, setPpm] = useState(2);
   const [loading, setLoading] = useState(false);
 
-  // reload classes when section changes
   useEffect(() => {
     if (!sectionId) return;
     (async () => {
       setLoading(true);
       const { data, error } = await supa()
         .from('classes')
-        .select(
-          'id, section_id, day, start, end, code, title, room, instructor'
-        )
+        .select('id, section_id, day, start, end, code, title, room, instructor')
         .eq('section_id', Number(sectionId))
         .order('day, start, id');
       if (error) {
         alert(error.message);
-        setLoading(false);
-        return;
+      } else {
+        setRows((data ?? []).map((r: any) => ({ ...r, day: Number(r.day) })) as Row[]);
       }
-      setRows(
-        (data ?? []).map((r: any) => ({ ...r, day: Number(r.day) })) as Row[]
-      );
       setLoading(false);
     })();
   }, [sectionId]);
 
-  // time grid config
-  const startMin = 7 * 60; // 07:00
-  const endMin = 20 * 60; // 20:00
+  const startMin = 7 * 60;
+  const endMin = 20 * 60;
   const slotMin = 30;
 
-  // group by day
   const byDay = useMemo(() => {
     const map: Record<number, Row[]> = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [] };
     rows.forEach((r) => map[r.day]?.push(r));
-    Object.values(map).forEach((list) =>
-      list.sort((a, b) => toMinutes(a.start) - toMinutes(b.start))
-    );
+    Object.values(map).forEach((list) => list.sort((a, b) => toMinutes(a.start) - toMinutes(b.start)));
     return map;
   }, [rows]);
 
   return (
     <main className="px-6 py-8 max-w-6xl mx-auto">
       <div className="mb-6 flex flex-wrap items-center gap-4">
-        <h2 className="text-xl font-semibold">Timetable</h2>
+        <h2 className="text-xl font-semibold">Timetable Grid</h2>
 
-        <div className="flex items-center gap-2">
-          <span>Section:</span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm">Section:</span>
           <select
             className="rounded-md border border-gray-300 px-2 py-1 text-sm outline-none focus:border-gray-400"
             value={sectionId}
-            onChange={(e) =>
-              setSectionId(e.target.value ? Number(e.target.value) : '')
-            }
+            onChange={(e) => setSectionId(e.target.value ? Number(e.target.value) : '')}
           >
             {!sectionId && <option value="">Select section</option>}
             {sections.map((s) => (
@@ -107,7 +93,7 @@ export default function GridClient({
             ))}
           </select>
 
-          <label className="ml-4 text-sm flex items-center gap-2">
+          <label className="ml-4 flex items-center gap-2 text-sm">
             Zoom
             <input
               type="range"
@@ -127,7 +113,7 @@ export default function GridClient({
       ) : (
         <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
           <div className="min-w-[900px]">
-            {/* Hour header */}
+            {/* hour header */}
             <div
               className="grid"
               style={{
@@ -135,45 +121,37 @@ export default function GridClient({
               }}
             >
               <div></div>
-              {Array.from({ length: (endMin - startMin) / slotMin }).map(
-                (_, i) => {
-                  const m = startMin + i * slotMin;
-                  const h = String(Math.floor(m / 60)).padStart(2, '0');
-                  const mm = String(m % 60).padStart(2, '0');
-                  return (
-                    <div
-                      key={i}
-                      className="text-[11px] text-center border-b border-l py-1 text-gray-600"
-                    >
-                      {h}:{mm}
-                    </div>
-                  );
-                }
-              )}
+              {Array.from({ length: (endMin - startMin) / slotMin }).map((_, i) => {
+                const m = startMin + i * slotMin;
+                const h = String(Math.floor(m / 60)).padStart(2, '0');
+                const mm = String(m % 60).padStart(2, '0');
+                return (
+                  <div
+                    key={i}
+                    className="text-[11px] text-center border-b border-l py-1 text-gray-600"
+                  >
+                    {h}:{mm}
+                  </div>
+                );
+              })}
             </div>
 
-            {/* Per-day rows */}
+            {/* daily grid */}
             {([1, 2, 3, 4, 5, 6, 7] as const).map((d) => (
-              <div
-                key={d}
-                className="relative grid"
-                style={{ gridTemplateColumns: `120px 1fr` }}
-              >
+              <div key={d} className="relative grid" style={{ gridTemplateColumns: `120px 1fr` }}>
                 <div className="border-b py-8 pr-2 text-right font-medium text-gray-700">
                   {days[d]}
                 </div>
 
                 <div className="relative border-b">
-                  {/* Slot grid */}
+                  {/* background slots */}
                   <div
                     className="absolute inset-0 grid"
                     style={{
                       gridTemplateColumns: `repeat(${(endMin - startMin) / slotMin}, 1fr)`,
                     }}
                   >
-                    {Array.from({
-                      length: (endMin - startMin) / slotMin,
-                    }).map((_, i) => (
+                    {Array.from({ length: (endMin - startMin) / slotMin }).map((_, i) => (
                       <div
                         key={i}
                         className="border-l last:border-r border-dashed opacity-20"
@@ -181,11 +159,8 @@ export default function GridClient({
                     ))}
                   </div>
 
-                  {/* Events */}
-                  <div
-                    className="relative"
-                    style={{ height: `${(endMin - startMin) * ppm}px` }}
-                  >
+                  {/* events */}
+                  <div className="relative" style={{ height: `${(endMin - startMin) * ppm}px` }}>
                     {byDay[d].map((ev) => {
                       const s = clamp(toMinutes(ev.start), startMin, endMin);
                       const e = clamp(toMinutes(ev.end), startMin, endMin);
@@ -195,10 +170,7 @@ export default function GridClient({
                         <div
                           key={ev.id}
                           className="absolute left-2 right-2 border rounded-md bg-gray-50 p-2 text-xs shadow-sm hover:shadow-md transition"
-                          style={{
-                            top,
-                            height,
-                          }}
+                          style={{ top, height }}
                           title={`${ev.title} (${ev.start}-${ev.end})`}
                         >
                           <div className="font-semibold truncate text-[#0A2B52]">

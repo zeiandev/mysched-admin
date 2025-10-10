@@ -17,57 +17,25 @@ type DbClass = {
   instructor: string | null;
 };
 
-/** Must match Row in grid-client.tsx */
-type GridRow = {
-  id: number;
-  section_id: number;
-  day: number;
-  start: string;
-  end: string;
-  title: string;
-  code: string | null;
-  room: string | null;
-  instructor: string | null;
-};
-
 export default async function GridPage() {
   const gate = await requireAdmin();
   if (!gate.ok) redirect('/login');
 
   const s = supaServer();
 
-  // load sections
-  const { data: sectionsData } = await s
-    .from('sections')
-    .select('id, code')
-    .order('id');
-
+  const { data: sectionsData } = await s.from('sections').select('id, code').order('id');
   const sections: Section[] = (sectionsData ?? []) as Section[];
 
-  // pick first section for initial load
-  const initialSectionId: number | null =
-    sections.length > 0 ? sections[0].id : null;
+  const initialSectionId = sections.length > 0 ? sections[0].id : null;
 
-  let initial: GridRow[] = [];
+  let initial: DbClass[] = [];
   if (initialSectionId !== null) {
     const { data } = await s
       .from('classes')
       .select('id, section_id, day, start, end, code, title, room, instructor')
       .eq('section_id', initialSectionId)
       .order('day, start, id');
-
-    const raw = (data ?? []) as DbClass[];
-    initial = raw.map((r) => ({
-      id: r.id,
-      section_id: r.section_id,
-      day: Number(r.day),
-      start: r.start,
-      end: r.end,
-      title: r.title,
-      code: r.code,
-      room: r.room,
-      instructor: r.instructor,
-    }));
+    initial = (data ?? []).map((r: any) => ({ ...r, day: Number(r.day) }));
   }
 
   return (
@@ -78,9 +46,7 @@ export default async function GridPage() {
             <div className="h-8 w-8 rounded-md bg-[#0A2B52] text-white flex items-center justify-center font-bold">
               MS
             </div>
-            <h1 className="text-lg font-semibold tracking-tight">
-              Timetable Grid
-            </h1>
+            <h1 className="text-lg font-semibold tracking-tight">Timetable Grid</h1>
           </div>
           <Link href="/dashboard" className="text-sm text-[#0A2B52] hover:underline">
             Back to Dashboard
@@ -91,7 +57,7 @@ export default async function GridPage() {
       <GridClient
         sections={sections}
         initialSectionId={initialSectionId}
-        initial={initial}
+        initial={initial as any}
       />
     </main>
   );
