@@ -1,12 +1,12 @@
 // src/app/dashboard/page.tsx
-import { requireAdmin } from '../../lib/auth';
-import { redirect } from 'next/navigation';
-import Link from 'next/link';
-import LogoutButton from '../../components/LogoutButton';
+import { requireAdmin } from "../../lib/Auth";
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import LogoutButton from "../../components/LogoutButton";
 
 export default async function Dashboard() {
   const gate = await requireAdmin();
-  if (!gate.ok) redirect('/login');
+  if (!gate.ok) redirect("/login");
 
   return (
     <main className="min-h-screen bg-gray-50 text-gray-900">
@@ -22,6 +22,9 @@ export default async function Dashboard() {
           <div className="flex items-center gap-3">
             <Link href="/audit" className="text-sm text-[#0A2B52] hover:underline">
               Audit Log
+            </Link>
+            <Link href="/admins" className="text-sm text-[#0A2B52] hover:underline">
+              Admins
             </Link>
             <LogoutButton />
           </div>
@@ -54,11 +57,21 @@ export default async function Dashboard() {
           <Panel className="lg:col-span-2">
             <h3 className="text-base font-semibold mb-2">Guidelines</h3>
             <ul className="text-sm text-gray-700 space-y-1.5">
-              <li>• Use <span className="font-medium">Classes → Import</span> for bulk uploads</li>
-              <li>• Check the <Link href="/audit" className="text-[#0A2B52] underline">Audit Log</Link> after edits</li>
+              <li>
+                • Use{" "}
+                <span className="font-medium">Classes → Import</span> for bulk uploads
+              </li>
+              <li>
+                • Check the{" "}
+                <Link href="/audit" className="text-[#0A2B52] underline">
+                  Audit Log
+                </Link>{" "}
+                after edits
+              </li>
               <li>• All updates auto-track timestamps for consistency</li>
             </ul>
           </Panel>
+
           <Panel>
             <h3 className="text-base font-semibold mb-3">System Info</h3>
             <div className="space-y-2 text-sm">
@@ -104,11 +117,27 @@ function ActionCard({
   );
 }
 
-function Panel({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <div className={`rounded-lg border border-gray-200 bg-white p-5 ${className}`}>{children}</div>;
+function Panel({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`rounded-lg border border-gray-200 bg-white p-5 ${className}`}>
+      {children}
+    </div>
+  );
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function Row({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex justify-between">
       <span className="text-gray-600">{label}</span>
