@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { supaServer } from '../../lib/supabase/server';
 import Nav from '../../components/Nav';
 import AdminsClient from './admins-client';
+import { getFlags } from "@/lib/edge-config";
 
 type AdminRow = { user_id: string; email: string; created_at: string };
 
