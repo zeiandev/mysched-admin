@@ -1,24 +1,23 @@
-import { requireAdmin } from '../../lib/auth';
-import { redirect } from 'next/navigation';
-import { supaServer } from '../../lib/supabase/server';
-import Nav from '../../components/Nav';
-import AdminsClient from './admins-client';
 import { getFlags } from "@/lib/edge-config";
 
-type AdminRow = { user_id: string; email: string; created_at: string };
+export default async function AdminPage() {
+  const flags = await getFlags();
 
-export default async function AdminsPage() {
-  const gate = await requireAdmin();
-  if (!gate.ok) redirect('/login');
-
-  const s = supaServer();
-  const { data, error } = await s.rpc('list_admins');
-  if (error) throw new Error(error.message);
+  // Example feature toggle
+  if (!flags.import_enabled) {
+    return (
+      <main className="p-8">
+        <h1 className="text-xl font-bold">Admin Dashboard</h1>
+        <p className="mt-4 text-gray-500">Import feature is currently OFF</p>
+      </main>
+    );
+  }
 
   return (
-    <>
-      <Nav />
-      <AdminsClient initial={(data ?? []) as AdminRow[]} />
-    </>
+    <main className="p-8">
+      <h1 className="text-xl font-bold">Admin Dashboard</h1>
+      <p className="mt-4 text-green-600">Import feature is ON</p>
+      {/* your import UI or components go here */}
+    </main>
   );
 }
