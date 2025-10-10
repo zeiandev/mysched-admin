@@ -7,6 +7,11 @@ export default async function Dashboard() {
   const gate = await requireAdmin();
   if (!gate.ok) redirect('/login');
 
+  // Temporary Sentry test — remove after confirming event
+  if (typeof window !== "undefined") {
+    throw new Error("Sentry manual test error");
+  }
+
   return (
     <main className="min-h-screen bg-white text-gray-900 flex flex-col items-center px-6 py-10">
       <header className="w-full max-w-2xl flex items-center justify-between mb-8">
@@ -23,27 +28,42 @@ export default async function Dashboard() {
         <h2 className="text-lg font-semibold text-gray-800">Quick Access</h2>
 
         <div className="grid sm:grid-cols-2 gap-3">
-          <Link href="/sections" className="block border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition">
+          <Link
+            href="/sections"
+            className="block border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition"
+          >
             <h3 className="font-medium text-[#0A2B52] mb-1">Manage Sections</h3>
             <p className="text-sm text-gray-500">Add or edit academic sections.</p>
           </Link>
 
-          <Link href="/classes" className="block border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition">
+          <Link
+            href="/classes"
+            className="block border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition"
+          >
             <h3 className="font-medium text-[#0A2B52] mb-1">Manage Classes</h3>
             <p className="text-sm text-gray-500">Edit class details and schedules.</p>
           </Link>
 
-          <Link href="/classes/grid" className="block border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition">
+          <Link
+            href="/classes/grid"
+            className="block border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition"
+          >
             <h3 className="font-medium text-[#0A2B52] mb-1">Timetable Grid View</h3>
             <p className="text-sm text-gray-500">View all classes visually by day.</p>
           </Link>
 
-          <Link href="/admins" className="block border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition">
+          <Link
+            href="/admins"
+            className="block border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition"
+          >
             <h3 className="font-medium text-[#0A2B52] mb-1">Manage Admins</h3>
             <p className="text-sm text-gray-500">Add or remove admin accounts.</p>
           </Link>
 
-          <Link href="/audit" className="block border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition sm:col-span-2">
+          <Link
+            href="/audit"
+            className="block border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition sm:col-span-2"
+          >
             <h3 className="font-medium text-[#0A2B52] mb-1">Audit Log</h3>
             <p className="text-sm text-gray-500">Review system activity and changes.</p>
           </Link>
