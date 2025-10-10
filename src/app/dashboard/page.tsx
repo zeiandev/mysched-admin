@@ -8,152 +8,126 @@ export default async function Dashboard() {
   if (!gate.ok) redirect('/login');
 
   return (
-    <main className="min-h-screen bg-white text-gray-900">
-      {/* Top bar */}
-      <div className="border-b">
-        <div className="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#0A2B52] text-white font-bold">
-              MS
-            </div>
-            <h1 className="text-lg font-semibold tracking-tight">Admin Dashboard</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/audit"
-              className="text-sm text-[#0A2B52] hover:underline"
-            >
-              Audit log
-            </Link>
-            <LogoutButton />
-          </div>
-        </div>
-      </div>
+    <main className="min-h-screen bg-[url('/bg-pattern.svg')] bg-cover bg-center relative overflow-hidden">
+      <div className="absolute inset-0 backdrop-blur-md bg-white/50" />
 
-      {/* Page body */}
-      <div className="mx-auto max-w-6xl px-6 py-8 space-y-8">
-        {/* Quick actions */}
-        <section>
-          <h2 className="text-sm font-medium text-gray-600 mb-3">Quick actions</h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <ActionCard href="/sections" title="Manage Sections" desc="Create or edit sections">
-              <IconBook />
-            </ActionCard>
-            <ActionCard href="/classes" title="Manage Classes" desc="Add or edit classes">
-              <IconCalendar />
-            </ActionCard>
-            <ActionCard href="/classes/grid" title="Timetable Grid" desc="Visual weekly view">
-              <IconGrid />
-            </ActionCard>
-            <ActionCard href="/admins" title="Manage Admins" desc="Add or remove admins">
-              <IconUsers />
-            </ActionCard>
-          </div>
-        </section>
-
-        {/* Guidance / links */}
-        <section className="grid gap-4 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <div className="rounded-2xl border border-gray-200 bg-white p-5">
-              <h3 className="text-base font-semibold mb-2">Tips</h3>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li className="flex items-start gap-2">
-                  <Dot /> Use <span className="mx-1 font-medium">Classes → Import</span> for CSV/JSON uploads.
-                </li>
-                <li className="flex items-start gap-2">
-                  <Dot /> Check <Link href="/audit" className="text-[#0A2B52] underline">Audit Log</Link> after bulk edits.
-                </li>
-                <li className="flex items-start gap-2">
-                  <Dot /> Edits auto-track <span className="mx-1 font-medium">created_at</span> and <span className="mx-1 font-medium">updated_at</span>.
-                </li>
-              </ul>
-            </div>
-          </div>
-          <div>
-            <div className="rounded-2xl border border-gray-200 bg-white p-5">
-              <h3 className="text-base font-semibold mb-3">System</h3>
-              <div className="space-y-3 text-sm">
-                <Row label="Status">
-                  <span className="inline-flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-green-500" /> Healthy
-                  </span>
-                </Row>
-                <Row label="Security">
-                  CSP, RLS, Sentry
-                </Row>
-                <Row label="Shortcuts">
-                  <div className="flex flex-wrap gap-2">
-                    <Chip href="/classes">Classes</Chip>
-                    <Chip href="/sections">Sections</Chip>
-                    <Chip href="/admins">Admins</Chip>
-                    <Chip href="/audit">Audit</Chip>
-                  </div>
-                </Row>
+      <div className="relative z-10 flex flex-col min-h-screen text-gray-900">
+        {/* Header */}
+        <header className="border-b border-white/30 bg-white/40 backdrop-blur-xl sticky top-0">
+          <div className="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-[#0A2B52]/80 text-white flex items-center justify-center font-bold">
+                MS
               </div>
+              <h1 className="text-lg font-semibold tracking-tight">MySched Admin</h1>
+            </div>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/audit"
+                className="text-sm text-[#0A2B52] hover:underline"
+              >
+                Audit Log
+              </Link>
+              <LogoutButton />
             </div>
           </div>
-        </section>
+        </header>
+
+        {/* Main Content */}
+        <div className="flex-1 mx-auto w-full max-w-6xl px-6 py-10 space-y-10">
+          {/* Quick Access */}
+          <section>
+            <h2 className="text-sm font-medium text-gray-700 mb-4 uppercase tracking-wide">
+              Quick Access
+            </h2>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <GlassCard href="/sections" title="Sections" desc="Manage academic sections">
+                <IconBook />
+              </GlassCard>
+              <GlassCard href="/classes" title="Classes" desc="Edit schedules and details">
+                <IconCalendar />
+              </GlassCard>
+              <GlassCard href="/classes/grid" title="Grid View" desc="Visualize timetable">
+                <IconGrid />
+              </GlassCard>
+              <GlassCard href="/admins" title="Admins" desc="Manage admin accounts">
+                <IconUsers />
+              </GlassCard>
+            </div>
+          </section>
+
+          {/* Info Section */}
+          <section className="grid gap-5 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <GlassPanel>
+                <h3 className="text-base font-semibold mb-2">System Overview</h3>
+                <ul className="space-y-2 text-sm text-gray-700">
+                  <li><Dot /> All changes logged to Audit Log</li>
+                  <li><Dot /> Auto tracks created_at / updated_at</li>
+                  <li><Dot /> Secure server-only admin access</li>
+                </ul>
+              </GlassPanel>
+            </div>
+            <div>
+              <GlassPanel>
+                <h3 className="text-base font-semibold mb-3">Status</h3>
+                <div className="space-y-3 text-sm">
+                  <Row label="App">
+                    <span className="inline-flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-green-500" /> Online
+                    </span>
+                  </Row>
+                  <Row label="Security">RLS + CSP + Sentry</Row>
+                  <Row label="Env">Production</Row>
+                </div>
+              </GlassPanel>
+            </div>
+          </section>
+        </div>
       </div>
     </main>
   );
 }
 
-/* ---------- UI bits (no extra deps) ---------- */
-
-function ActionCard({
-  href,
-  title,
-  desc,
-  children,
-}: {
-  href: string;
-  title: string;
-  desc: string;
-  children: React.ReactNode;
-}) {
+/* ---------- components ---------- */
+function GlassCard({ href, title, desc, children }: any) {
   return (
     <Link
       href={href}
-      className="group rounded-2xl border border-gray-200 bg-white p-5 transition hover:-translate-y-0.5 hover:shadow-sm"
+      className="group rounded-2xl border border-white/40 bg-white/40 backdrop-blur-xl 
+      hover:bg-white/60 hover:shadow-md transition transform hover:-translate-y-0.5 p-5"
     >
-      <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-700">
+      <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/70 text-gray-700">
         {children}
       </div>
-      <div className="font-medium text-[#0A2B52]">{title}</div>
-      <div className="text-sm text-gray-500">{desc}</div>
-      <div className="mt-3 text-xs text-[#0A2B52] opacity-0 transition group-hover:opacity-100">
-        Open →
-      </div>
+      <h3 className="font-medium text-[#0A2B52]">{title}</h3>
+      <p className="text-sm text-gray-600">{desc}</p>
     </Link>
+  );
+}
+
+function GlassPanel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-white/40 bg-white/50 backdrop-blur-xl p-5">
+      {children}
+    </div>
   );
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-4">
-      <div className="text-gray-500">{label}</div>
-      <div className="text-gray-800">{children}</div>
+      <span className="text-gray-500">{label}</span>
+      <span className="text-gray-800">{children}</span>
     </div>
   );
 }
 
-function Chip({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className="rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-700 hover:bg-gray-50"
-    >
-      {children}
-    </Link>
-  );
-}
-
 function Dot() {
-  return <span className="mt-1 inline-block h-1.5 w-1.5 rounded-full bg-gray-400" />;
+  return <span className="inline-block h-1.5 w-1.5 rounded-full bg-gray-400 mr-1" />;
 }
 
-/* ---------- minimal inline icons ---------- */
-
+/* ---------- icons ---------- */
 function IconBook() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -162,7 +136,6 @@ function IconBook() {
     </svg>
   );
 }
-
 function IconCalendar() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -171,7 +144,6 @@ function IconCalendar() {
     </svg>
   );
 }
-
 function IconGrid() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -179,7 +151,6 @@ function IconGrid() {
     </svg>
   );
 }
-
 function IconUsers() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5">
