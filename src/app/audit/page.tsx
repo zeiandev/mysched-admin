@@ -5,7 +5,7 @@ import Link from 'next/link';
 
 function supa() {
   const store = cookies();
-  const cookieAdapter = {
+  const cookiesAdapter = {
     get(name: string) { return store.get(name)?.value; },
     set(name: string, value: string, options: CookieOptions) { store.set({ name, value, ...options } as any); },
     remove(name: string, options: CookieOptions) { store.set({ name, value: '', ...options } as any); },
@@ -13,18 +13,18 @@ function supa() {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: cookieAdapter as any }
+    { cookies: cookiesAdapter as any }
   );
 }
 
 type Row = {
   id: number;
   table_name: string;
-  row_id: string;
+  row_id: number;
   action: 'insert'|'update'|'delete';
   at: string;
-  actor: string | null; // email if available
-  changes: any;
+  user_id: string | null;
+  details: any;
 };
 
 export default async function AuditPage() {
@@ -36,10 +36,9 @@ export default async function AuditPage() {
   const { data: admin } = await s.from('admins').select('user_id').eq('user_id', user.id).maybeSingle();
   if (!admin) redirect('/dashboard');
 
-  // fetch last 100 entries, try to map actor email if profiles table exists
   const { data, error } = await s
     .from('audit_log')
-    .select('id, table_name, row_id, action, at, actor, changes')
+    .select('id, table_name, row_id, action, at, user_id, details')
     .order('at', { ascending: false })
     .limit(100);
 
@@ -53,20 +52,15 @@ export default async function AuditPage() {
     );
   }
 
-  // Best-effort actor email lookup
-  let rows: Row[] = (data ?? []).map(r => ({
-    ...r,
-    actor: r.actor as any,
-  })) as any;
+  let rows: Row[] = (data ?? []) as any;
 
-  if (rows.length > 0) {
-    const actorIds = Array.from(new Set(rows.map(r => (r as any).actor).filter(Boolean)));
-    if (actorIds.length) {
-      const { data: profs } = await s.from('profiles')
-        .select('id, email')
-        .in('id', actorIds as string[]);
+  // optional: map user_id -> email from profiles if available
+  if (rows.length) {
+    const ids = Array.from(new Set(rows.map(r => r.user_id).filter(Boolean))) as string[];
+    if (ids.length) {
+      const { data: profs } = await s.from('profiles').select('id, email').in('id', ids);
       const map = new Map((profs ?? []).map(p => [p.id, (p as any).email]));
-      rows = rows.map(r => ({ ...r, actor: r.actor ? (map.get(r.actor as any) ?? r.actor) : null }));
+      rows = rows.map(r => ({ ...r, user_id: r.user_id ? (map.get(r.user_id) ?? r.user_id) : null }));
     }
   }
 
@@ -86,12 +80,12 @@ export default async function AuditPage() {
                 <th className="px-3 py-2 text-left">Table</th>
                 <th className="px-3 py-2 text-left">Row ID</th>
                 <th className="px-3 py-2 text-left">Action</th>
-                <th className="px-3 py-2 text-left">Actor</th>
-                <th className="px-3 py-2 text-left">Changes (JSON)</th>
+                <th className="px-3 py-2 text-left">User</th>
+                <th className="px-3 py-2 text-left">Details (JSON)</th>
               </tr>
             </thead>
             <tbody>
-              {(rows ?? []).map((r) => (
+              {rows.map((r) => (
                 <tr key={r.id} className="border-t">
                   <td className="px-3 py-2 whitespace-nowrap">{new Date(r.at).toLocaleString()}</td>
                   <td className="px-3 py-2">{r.table_name}</td>
@@ -102,15 +96,15 @@ export default async function AuditPage() {
                       r.action === 'update' ? 'text-amber-700' : 'text-red-700'
                     }>{r.action}</span>
                   </td>
-                  <td className="px-3 py-2">{r.actor ?? '—'}</td>
+                  <td className="px-3 py-2">{r.user_id ?? '—'}</td>
                   <td className="px-3 py-2">
                     <pre className="max-w-[520px] overflow-x-auto whitespace-pre-wrap break-all text-xs bg-gray-50 p-2 rounded">
-                      {JSON.stringify(r.changes, null, 2)}
+                      {JSON.stringify(r.details, null, 2)}
                     </pre>
                   </td>
                 </tr>
               ))}
-              {(!rows || rows.length === 0) && (
+              {rows.length === 0 && (
                 <tr><td className="px-3 py-6 text-gray-500" colSpan={6}>No audit entries yet.</td></tr>
               )}
             </tbody>
