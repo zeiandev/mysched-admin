@@ -2,6 +2,7 @@
 import { redirect } from 'next/navigation';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import Link from 'next/link';
 import AuditClient from './AuditClient';
 
 function supa() {
@@ -21,21 +22,14 @@ function supa() {
 export default async function AuditPage() {
   const s = supa();
 
-  // Check auth
+  // auth + admin gate
   const { data: { user } } = await s.auth.getUser();
   if (!user) redirect('/login');
-
-  // Verify admin
-  const { data: admin } = await s.from('admins')
-    .select('user_id')
-    .eq('user_id', user.id)
-    .maybeSingle();
-
+  const { data: admin } = await s.from('admins').select('user_id').eq('user_id', user.id).maybeSingle();
   if (!admin) redirect('/dashboard');
 
-  // Fetch first 200 logs
-  const { data, error } = await s.rpc('list_audit', { p_limit: 200 });
-  if (error) console.error('Audit fetch error:', error.message);
+  // initial load (server)
+  const { data } = await s.rpc('list_audit', { p_limit: 200 });
 
   return (
     <main className="min-h-screen bg-gray-50 text-gray-900">
@@ -47,14 +41,13 @@ export default async function AuditPage() {
             </div>
             <h1 className="text-lg font-semibold tracking-tight">Audit Log</h1>
           </div>
-          <a href="/dashboard" className="text-sm text-[#0A2B52] hover:underline">
+          <Link href="/dashboard" className="text-sm text-[#0A2B52] hover:underline">
             Back to Dashboard
-          </a>
+          </Link>
         </div>
       </header>
 
-      {/* Client-side component */}
-      <AuditClient initial={data ?? []} />
+      <AuditClient initial={(data ?? []) as any} />
     </main>
   );
 }

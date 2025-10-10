@@ -29,8 +29,9 @@ export default function AuditClient({ initial }: { initial: Row[] }) {
     const s = search.toLowerCase();
     if (!s) return rows;
     return rows.filter((r) =>
-      [r.email ?? '', r.action, r.table_name, r.title ?? '']
-        .some((v) => v.toLowerCase().includes(s))
+      [r.email ?? '', r.action, r.table_name, r.title ?? ''].some((v) =>
+        v.toLowerCase().includes(s)
+      )
     );
   }, [rows, search]);
 
@@ -44,9 +45,9 @@ export default function AuditClient({ initial }: { initial: Row[] }) {
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold">Audit Records</h1>
-        <div className="flex gap-2 items-center">
+      <div className="mb-6 flex items-center justify-between">
+        <h2 className="text-xl font-semibold">Audit Records</h2>
+        <div className="flex items-center gap-2">
           <input
             type="text"
             placeholder="Search by table, action, email..."
@@ -72,7 +73,7 @@ export default function AuditClient({ initial }: { initial: Row[] }) {
         </div>
       </div>
 
-      <div className="overflow-x-auto border border-gray-200 rounded-lg bg-white">
+      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50 text-gray-700">
             <tr>
@@ -88,7 +89,9 @@ export default function AuditClient({ initial }: { initial: Row[] }) {
           <tbody>
             {filtered.map((r, i) => (
               <tr key={i} className="border-t hover:bg-gray-50">
-                <td className="px-3 py-2 whitespace-nowrap">{new Date(r.at).toLocaleString()}</td>
+                <td className="px-3 py-2 whitespace-nowrap">
+                  {new Date(r.at).toLocaleString()}
+                </td>
                 <td className="px-3 py-2">{r.email ?? '—'}</td>
                 <td className="px-3 py-2 font-medium">
                   <span
@@ -108,17 +111,20 @@ export default function AuditClient({ initial }: { initial: Row[] }) {
                 <td className="px-3 py-2">{r.title ?? '—'}</td>
                 <td className="px-3 py-2">
                   <details>
-                    <summary className="cursor-pointer text-[#0A2B52] text-xs">View</summary>
-                    <pre className="mt-1 max-w-[500px] overflow-x-auto whitespace-pre-wrap break-all rounded bg-gray-50 p-2 text-xs border border-gray-100">
+                    <summary className="cursor-pointer text-[#0A2B52] text-xs">
+                      View
+                    </summary>
+                    <pre className="mt-1 max-w-[500px] overflow-x-auto whitespace-pre-wrap break-all rounded border border-gray-100 bg-gray-50 p-2 text-xs">
                       {JSON.stringify(r.details, null, 2)}
                     </pre>
                   </details>
                 </td>
               </tr>
             ))}
+
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-gray-500 text-sm">
+                <td colSpan={7} className="px-3 py-6 text-center text-gray-500">
                   No audit entries found.
                 </td>
               </tr>
