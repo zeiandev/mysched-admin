@@ -1,128 +1,124 @@
-'use client';
+// src/app/login/page.tsx
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
+import { cookies } from 'next/headers';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
-import { useState } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
+// ---- Server Action: sign in with email/password ----
+async function login(formData: FormData) {
+  'use server';
 
-const supa = () =>
-  createBrowserClient(
+  const email = String(formData.get('email') || '');
+  const password = String(formData.get('password') || '');
+
+  const store = cookies();
+  const cookieAdapter = {
+    get(name: string) {
+      return store.get(name)?.value;
+    },
+    set(name: string, value: string, options: CookieOptions) {
+      store.set({ name, value, ...options } as any);
+    },
+    remove(name: string, options: CookieOptions) {
+      store.set({ name, value: '', ...options } as any);
+    },
+  };
+
+  const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: cookieAdapter as any }
   );
 
-export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [show, setShow] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setErr(null);
-    setLoading(true);
-    const { error } = await supa().auth.signInWithPassword({ email, password });
-    setLoading(false);
-    if (error) setErr(error.message);
-    else window.location.href = '/dashboard';
+  if (error) {
+    // back to login with a short message
+    redirect(`/login?error=${encodeURIComponent(error.message)}`);
   }
 
+  redirect('/dashboard');
+}
+
+export default function LoginPage({
+  searchParams,
+}: {
+  searchParams?: { error?: string };
+}) {
+  const error = searchParams?.error ?? '';
+
   return (
-    <main className="min-h-screen grid place-items-center px-6 bg-white font-sfpro text-gray-900">
-      {/* ---------- FONT SETUP ---------- */}
-      <style jsx global>{`
-        @font-face {
-          font-family: 'SF Pro Rounded';
-          src: url('/SF-Pro-Rounded-Regular.otf') format('opentype');
-          font-weight: 400;
-          font-style: normal;
-        }
-        @font-face {
-          font-family: 'SF Pro Rounded';
-          src: url('/SF-Pro-Rounded-Medium.otf') format('opentype');
-          font-weight: 500;
-          font-style: normal;
-        }
-        @font-face {
-          font-family: 'SF Pro Rounded';
-          src: url('/SF-Pro-Rounded-Bold.otf') format('opentype');
-          font-weight: 700;
-          font-style: normal;
-        }
-        body {
-          font-family: 'SF Pro Rounded', -apple-system, BlinkMacSystemFont,
-            'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-          background-color: #fff;
-        }
-      `}</style>
-
-      {/* ---------- LOGIN CARD ---------- */}
-      <div className="w-full max-w-md">
-        <div className="text-center mb-10">
-          <div className="text-[28px] font-bold tracking-tight">
-            <span className="text-sky-500">My</span>Sched
-          </div>
-          <h1 className="text-[22px] font-semibold mt-3">Admin Login</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Sign in to manage schedules and users.
-          </p>
-        </div>
-
-        <form
-          onSubmit={onSubmit}
-          className="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 space-y-5"
-        >
-          {err && (
-            <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2">
-              {err}
+    <main className="min-h-screen bg-gray-50 text-gray-900">
+      {/* Header */}
+      <header className="border-b bg-white">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-md bg-[#0A2B52] text-white flex items-center justify-center font-bold">
+              MS
             </div>
-          )}
-
-          <div className="space-y-1">
-            <label className="text-[13px] font-medium text-gray-700">
-              Email
-            </label>
-            <input
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-[15px] focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all"
-              type="email"
-              placeholder="example@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-            />
+            <h1 className="text-lg font-semibold tracking-tight">MySched Admin</h1>
           </div>
+          <Link href="/" className="text-sm text-[#0A2B52] hover:underline">
+            Back to site
+          </Link>
+        </div>
+      </header>
 
-          <div className="space-y-1">
-            <label className="text-[13px] font-medium text-gray-700">
-              Password
-            </label>
-            <div className="relative">
+      {/* Body */}
+      <div className="mx-auto max-w-6xl px-6 py-12">
+        <div className="mx-auto max-w-md rounded-lg border border-gray-200 bg-white p-6">
+          <h2 className="text-xl font-semibold mb-1">Sign in</h2>
+          <p className="text-sm text-gray-600 mb-6">Administrator access only.</p>
+
+          {error ? (
+            <div className="mb-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {decodeURIComponent(error)}
+            </div>
+          ) : null}
+
+          <form action={login} className="space-y-4">
+            <div>
+              <label htmlFor="email" className="block text-sm text-gray-700 mb-1">
+                Email
+              </label>
               <input
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-[15px] focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all pr-16"
-                type={show ? 'text' : 'password'}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                id="email"
+                name="email"
+                type="email"
                 required
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400"
+                placeholder="admin@example.com"
+                autoComplete="email"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm text-gray-700 mb-1">
+                Password
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400"
+                placeholder="••••••••"
                 autoComplete="current-password"
               />
-              <button
-                type="button"
-                onClick={() => setShow(!show)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-500 hover:text-gray-700 font-medium"
-              >
-                {show ? 'Hide' : 'Show'}
-              </button>
             </div>
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-[#0A2B52] text-white rounded-xl py-3 text-[16px] font-semibold tracking-tight shadow-sm active:scale-[.98] transition disabled:opacity-60"
-          >
-            {loading ? 'Signing in…' : 'Sign In'}
-          </button>
-        </form>
+
+            <button
+              type="submit"
+              className="w-full rounded-md bg-[#0A2B52] px-4 py-2 text-sm font-medium text-white hover:bg-[#083459]"
+            >
+              Sign in
+            </button>
+          </form>
+
+          <p className="mt-4 text-xs text-gray-500">
+            Only approved admins can sign in. Contact the owner if you need access.
+          </p>
+        </div>
       </div>
     </main>
   );
