@@ -1,6 +1,5 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
-export * from "./Auth";
 /**
  * Creates a Supabase server client for authenticated server-side calls.
  */
