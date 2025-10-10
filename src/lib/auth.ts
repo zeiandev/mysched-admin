@@ -1,8 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
-/**
- * Creates a Supabase server client for authenticated server-side calls.
- */
+
+/** Supabase server client (SSR cookies) */
 function supaServer() {
   const store = cookies();
   const cookieAdapter = {
@@ -23,21 +22,12 @@ function supaServer() {
   );
 }
 
-/**
- * Checks if the current user is an authenticated admin.
- * Returns { ok: true, user } if admin, otherwise { ok: false, reason }.
- */
+/** Admin check */
 export async function requireAdmin() {
   const s = supaServer();
 
-  const {
-    data: { user },
-    error: userErr,
-  } = await s.auth.getUser();
-
-  if (userErr || !user) {
-    return { ok: false as const, reason: "unauth" };
-  }
+  const { data: { user }, error: userErr } = await s.auth.getUser();
+  if (userErr || !user) return { ok: false as const, reason: "unauth" };
 
   const { data, error: adminErr } = await s
     .from("admins")
@@ -46,13 +36,10 @@ export async function requireAdmin() {
     .maybeSingle();
 
   if (adminErr) {
-    console.error("requireAdmin: DB error →", adminErr.message);
+    console.error("requireAdmin DB error:", adminErr.message);
     return { ok: false as const, reason: "db_error" };
   }
-
-  if (!data) {
-    return { ok: false as const, reason: "not_admin" };
-  }
+  if (!data) return { ok: false as const, reason: "not_admin" };
 
   return { ok: true as const, user };
 }
