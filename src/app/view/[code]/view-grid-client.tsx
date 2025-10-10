@@ -1,4 +1,5 @@
 'use client';
+
 import { useMemo } from 'react';
 
 type Row = {
@@ -25,10 +26,18 @@ export default function ViewGridClient({ initial }: { initial: Row[] }) {
   const startMin = 7 * 60; // 07:00
   const endMin = 20 * 60; // 20:00
   const slotMin = 30;
-  const PPM = 2; // fixed zoom for public view
+  const PPM = 2; // pixels per minute (zoom)
 
   const byDay = useMemo(() => {
-    const map: Record<number, Row[]> = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [] };
+    const map: Record<number, Row[]> = {
+      1: [],
+      2: [],
+      3: [],
+      4: [],
+      5: [],
+      6: [],
+      7: [],
+    };
     initial.forEach((r) => map[r.day]?.push(r));
     Object.values(map).forEach((list) =>
       list.sort((a, b) => toMinutes(a.start) - toMinutes(b.start))
@@ -37,11 +46,11 @@ export default function ViewGridClient({ initial }: { initial: Row[] }) {
   }, [initial]);
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
       <div className="min-w-[900px]">
-        {/* hour header */}
+        {/* Hour header */}
         <div
-          className="grid"
+          className="grid sticky top-0 bg-gray-50 z-10"
           style={{
             gridTemplateColumns: `120px repeat(${(endMin - startMin) / slotMin}, 1fr)`,
           }}
@@ -54,7 +63,7 @@ export default function ViewGridClient({ initial }: { initial: Row[] }) {
             return (
               <div
                 key={i}
-                className="text-xs text-center border-b border-l py-1"
+                className="text-[11px] text-center border-b border-l py-1 text-gray-600"
               >
                 {h}:{mm}
               </div>
@@ -62,36 +71,36 @@ export default function ViewGridClient({ initial }: { initial: Row[] }) {
           })}
         </div>
 
-        {/* per-day tracks */}
+        {/* Per-day schedule */}
         {([1, 2, 3, 4, 5, 6, 7] as const).map((d) => (
           <div
             key={d}
             className="relative grid"
             style={{ gridTemplateColumns: `120px 1fr` }}
           >
-            <div className="border-b py-8 pr-2 text-right font-medium">
+            <div className="border-b py-8 pr-2 text-right font-medium text-gray-700">
               {days[d]}
             </div>
 
-            <div className="relative border-b">
-              {/* slot grid */}
+            <div className="relative border-b bg-gray-50/40">
+              {/* Background slot grid */}
               <div
                 className="absolute inset-0 grid"
                 style={{
                   gridTemplateColumns: `repeat(${(endMin - startMin) / slotMin}, 1fr)`,
                 }}
               >
-                {Array.from({ length: (endMin - startMin) / slotMin }).map(
-                  (_, i) => (
-                    <div
-                      key={i}
-                      className="border-l last:border-r border-dashed opacity-30"
-                    ></div>
-                  )
-                )}
+                {Array.from({
+                  length: (endMin - startMin) / slotMin,
+                }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="border-l last:border-r border-dashed opacity-20"
+                  ></div>
+                ))}
               </div>
 
-              {/* events */}
+              {/* Events */}
               <div
                 className="relative"
                 style={{ height: `${(endMin - startMin) * PPM}px` }}
@@ -104,19 +113,20 @@ export default function ViewGridClient({ initial }: { initial: Row[] }) {
                   return (
                     <div
                       key={ev.id}
-                      className="absolute left-2 right-2 border rounded p-2 text-xs bg-white"
+                      className="absolute left-2 right-2 border rounded-md bg-white p-2 text-xs shadow-sm hover:shadow-md transition"
                       style={{
                         top,
                         height,
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
                       }}
                       title={`${ev.title} (${ev.start}-${ev.end})`}
                     >
-                      <div className="font-semibold truncate">{ev.title}</div>
-                      <div className="truncate">
+                      <div className="font-semibold truncate text-[#0A2B52]">
+                        {ev.title}
+                      </div>
+                      <div className="truncate text-gray-700">
                         {ev.code ?? ''} {ev.room ? `• ${ev.room}` : ''}
                       </div>
-                      <div className="opacity-70 truncate">
+                      <div className="text-gray-500 truncate">
                         {ev.start}–{ev.end} {ev.instructor ?? ''}
                       </div>
                     </div>
