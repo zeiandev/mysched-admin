@@ -1,8 +1,7 @@
-// src/app/admins/page.tsx
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import AdminsClient from './AdminsClient';
+import AdminsClient from './admins-client';
 
 function supa() {
   const store = cookies();
