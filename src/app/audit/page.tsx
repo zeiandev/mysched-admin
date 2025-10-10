@@ -1,9 +1,8 @@
-// src/app/audit/page.tsx
 import { redirect } from 'next/navigation';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
-import AuditClient from './AuditClient';
+import AuditClient from './audit-client';
 
 function supa() {
   const store = cookies();
@@ -25,7 +24,13 @@ export default async function AuditPage() {
   // auth + admin gate
   const { data: { user } } = await s.auth.getUser();
   if (!user) redirect('/login');
-  const { data: admin } = await s.from('admins').select('user_id').eq('user_id', user.id).maybeSingle();
+
+  const { data: admin } = await s
+    .from('admins')
+    .select('user_id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
   if (!admin) redirect('/dashboard');
 
   // initial load (server)
