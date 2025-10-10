@@ -1,19 +1,21 @@
 import { withSentryConfig } from "@sentry/nextjs";
 
 /** @type {import('next').NextConfig} */
+const csp = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  // ✅ Allow Supabase, Sentry, and Edge Config requests
+  "connect-src 'self' https://*.supabase.co https://*.sentry.io https://edge-config.vercel.com",
+  "frame-ancestors 'none'",
+].join("; ");
+
 const nextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
 
   async headers() {
-    const csp = [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data:",
-      "connect-src 'self' https://*.supabase.co https://*.sentry.io",
-      "frame-ancestors 'none'"
-    ].join("; ");
-
     return [
       {
         source: "/:path*",
@@ -29,5 +31,12 @@ const nextConfig = {
   },
 };
 
-// Wrap config with Sentry
-export default withSentryConfig(nextConfig, { silent: true });
+// ✅ Wrap Next.js config with Sentry monitoring
+export default withSentryConfig(nextConfig, {
+  silent: true,
+  org: "mysched",
+  project: "sentry-lightblue-elephant",
+  widenClientFileUpload: true,
+  reactComponentAnnotation: true,
+  disableLogger: true,
+});
