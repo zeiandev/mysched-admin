@@ -1,7 +1,6 @@
 import { requireAdmin } from '../../lib/auth';
 import { redirect } from 'next/navigation';
 import { supaServer } from '../../lib/supabase/server';
-import Nav from '../../components/Nav';
 import Link from 'next/link';
 import ClassesClient from './classes-client';
 
@@ -52,15 +51,30 @@ export default async function ClassesPage() {
   }
 
   return (
-    <>
-      <Nav />
-      <main className="p-6 max-w-5xl">
-        <div className="flex items-center gap-3 mb-4">
-          <h1 className="text-xl font-semibold">Classes</h1>
-          <Link className="underline text-sm" href="/classes/import">
+    <main className="min-h-screen bg-gray-50 text-gray-900">
+      <header className="border-b bg-white">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-md bg-[#0A2B52] text-white flex items-center justify-center font-bold">
+              MS
+            </div>
+            <h1 className="text-lg font-semibold tracking-tight">
+              Manage Classes
+            </h1>
+          </div>
+          <Link href="/dashboard" className="text-sm text-[#0A2B52] hover:underline">
+            Back to Dashboard
+          </Link>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-6xl px-6 py-8">
+        <div className="flex items-center gap-3 mb-6">
+          <h2 className="text-xl font-semibold">Classes</h2>
+          <Link className="underline text-sm text-[#0A2B52]" href="/classes/import">
             Import CSV
           </Link>
-          <Link className="underline text-sm" href="/classes/grid">
+          <Link className="underline text-sm text-[#0A2B52]" href="/classes/grid">
             Grid View
           </Link>
         </div>
@@ -70,7 +84,7 @@ export default async function ClassesPage() {
           initialSectionId={activeSectionId}
           initialClasses={classesClean}
         />
-      </main>
-    </>
+      </div>
+    </main>
   );
 }
