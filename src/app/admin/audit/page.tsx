@@ -5,9 +5,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AdminNav from '@/components/AdminNav'
 import { Shell, Card, CardBody, Button, Input, Table, Th, Td } from '@/components/ui'
 
-type AuditRow = {
-  id: number
-  created_at: string
+type AuditRowRaw = {
+  id?: number
+  at?: string            // <- your schema
+  created_at?: string    // fallback if API returns this
+  user_id?: string | null
+  table_name?: string | null
+  action?: string | null
+  row_id?: number | string | null
+  details?: unknown
+}
+
+type AuditRow = Required<Pick<AuditRowRaw, 'id'>> & {
+  ts: string
   user_id: string | null
   table_name: string | null
   action: string | null
@@ -28,7 +38,6 @@ export default function AuditPage() {
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
-  // debounced userId
   const debRef = useRef<number | null>(null)
   const userIdDebounced = useDebounced(userId, 300, debRef)
 
@@ -39,16 +48,23 @@ export default function AuditPage() {
       const p = new URLSearchParams()
       if (table !== 'all') p.set('table', table)
       if (userIdDebounced.trim()) p.set('user_id', userIdDebounced.trim())
-      // bust any caching aggressively
       p.set('_', String(Date.now()))
       const url = p.toString() ? `/api/audit?${p}` : `/api/audit?_=${Date.now()}`
-
       const res = await fetch(url, { cache: 'no-store' })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = (await res.json()) as AuditRow[] | { rows: AuditRow[] }
-      const list = Array.isArray(data) ? data : data.rows ?? []
-      setRows(list)
-    } catch (e) {
+      const payload = (await res.json()) as AuditRowRaw[] | { rows: AuditRowRaw[] }
+      const list = Array.isArray(payload) ? payload : payload.rows ?? []
+      const mapped: AuditRow[] = list.map((r, i) => ({
+        id: r.id ?? i, // ensure key
+        ts: formatTs(r.at ?? r.created_at ?? ''),
+        user_id: r.user_id ?? null,
+        table_name: r.table_name ?? null,
+        action: r.action ?? null,
+        row_id: r.row_id ?? null,
+        details: r.details,
+      }))
+      setRows(mapped)
+    } catch {
       setErr('Failed to load audit log')
       setRows([])
     } finally {
@@ -59,15 +75,6 @@ export default function AuditPage() {
   useEffect(() => {
     load()
   }, [load])
-
-  const pretty = useMemo(
-    () =>
-      rows.map((r) => ({
-        ...r,
-        created_display: r.created_at?.replace('T', ' ').replace('Z', '') ?? '',
-      })),
-    [rows]
-  )
 
   return (
     <main className="min-h-screen bg-white text-gray-900">
@@ -103,11 +110,11 @@ export default function AuditPage() {
 
               {err && <div className="py-3 text-sm text-red-600">{err}</div>}
               {loading && <div className="py-3 text-sm text-gray-500">Loading…</div>}
-              {!loading && !err && pretty.length === 0 && (
+              {!loading && !err && rows.length === 0 && (
                 <div className="py-6 text-sm text-gray-500">No audit entries found.</div>
               )}
 
-              {!loading && !err && pretty.length > 0 && (
+              {!loading && !err && rows.length > 0 && (
                 <>
                   <Table>
                     <thead>
@@ -121,9 +128,9 @@ export default function AuditPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {pretty.map((r) => (
-                        <tr key={r.id ?? `${r.table_name}-${r.created_at}-${r.row_id}`} className="odd:bg-white even:bg-gray-50">
-                          <Td>{r.created_display}</Td>
+                      {rows.map((r) => (
+                        <tr key={r.id} className="odd:bg-white even:bg-gray-50">
+                          <Td>{r.ts}</Td>
                           <Td>
                             <code className="text-xs">{r.user_id || '—'}</code>
                           </Td>
@@ -131,7 +138,6 @@ export default function AuditPage() {
                           <Td className="capitalize">{r.action || '—'}</Td>
                           <Td>{r.row_id ?? '—'}</Td>
                           <Td>
-                            {/* show compact JSON if present */}
                             {r.details ? (
                               <pre className="max-w-[26rem] overflow-x-auto whitespace-pre-wrap break-words rounded bg-gray-50 p-2 text-[11px] text-gray-700">
                                 {safeStringify(r.details)}
@@ -169,6 +175,20 @@ function useDebounced<T>(value: T, ms: number, ref: React.MutableRefObject<numbe
     }
   }, [value, ms]) // eslint-disable-line react-hooks/exhaustive-deps
   return v
+}
+
+const fmt = new Intl.DateTimeFormat(undefined, {
+  year: 'numeric',
+  month: 'short',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+})
+
+function formatTs(ts: string) {
+  const d = new Date(ts)
+  return Number.isNaN(d.getTime()) ? '—' : fmt.format(d)
 }
 
 function safeStringify(v: unknown): string {
