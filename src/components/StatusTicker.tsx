@@ -1,40 +1,56 @@
 'use client'
 import { useEffect, useState } from 'react'
 
-type Geo = { ip: string|null; city:string|null; region:string|null; country:string|null; secure:boolean }
+type Geo = {
+  ip: string | null
+  city: string | null
+  region: string | null
+  country: string | null
+  secure: boolean
+}
 
 export default function StatusTicker() {
-  const [t, setT] = useState<string>('CONNECTING…')
+  const [text, setText] = useState('CONNECTING…')
 
   useEffect(() => {
-    let alive = true
-    const run = async () => {
+    let active = true
+    const load = async () => {
       try {
-        const r = await fetch('/api/geo', { cache: 'no-store' })
-        const g: Geo = await r.json()
-        const ip = g.ip || 'unknown'
+        const res = await fetch('/api/geo', { cache: 'no-store' })
+        const g: Geo = await res.json()
+        const ip = g.ip || 'Unknown'
         const loc = [g.city, g.region, g.country].filter(Boolean).join(', ') || 'Unknown'
         const sec = g.secure ? 'SECURE' : 'INSECURE'
-        if (alive) setT(`CONNECTED | IP: ${ip} | LOCATION: ${loc} | STATUS: ${sec}`)
+        if (active) setText(`CONNECTED | IP: ${ip} | LOCATION: ${loc} | STATUS: ${sec}`)
       } catch {
-        if (alive) setT('CONNECTED | STATUS: UNKNOWN')
+        if (active) setText('CONNECTED | STATUS: UNKNOWN')
       }
     }
-    run()
-    const id = setInterval(run, 60_000)
-    return () => { alive = false; clearInterval(id) }
+    load()
+    const id = setInterval(load, 60_000)
+    return () => {
+      active = false
+      clearInterval(id)
+    }
   }, [])
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 bg-black text-white">
+    <div className="w-full border-b border-gray-200 bg-white text-xs text-gray-700">
       <div className="mx-auto max-w-6xl overflow-hidden">
-        <div className="whitespace-nowrap py-2 animate-[marquee_18s_linear_infinite]">
-          <span className="mx-4">{t}</span>
-          <span className="mx-4">{t}</span>
+        <div className="whitespace-nowrap py-1 animate-[marquee_25s_linear_infinite]">
+          <span className="mx-4">{text}</span>
+          <span className="mx-4">{text}</span>
         </div>
       </div>
       <style jsx>{`
-        @keyframes marquee { 0% { transform: translateX(0) } 100% { transform: translateX(-50%) } }
+        @keyframes marquee {
+          0% {
+            transform: translateX(0);
+          }
+          100% {
+            transform: translateX(-50%);
+          }
+        }
       `}</style>
     </div>
   )

@@ -1,4 +1,3 @@
-// src/app/layout.tsx
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
@@ -31,11 +30,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-gray-900`}
         suppressHydrationWarning
       >
-        <ToastProvider>
-          {children}
-          {/* Fixed bottom ticker for live connection + IP + location */}
-          <StatusTicker />
-        </ToastProvider>
+        {/* ✅ Show live connection ticker at top */}
+        <StatusTicker />
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   )
