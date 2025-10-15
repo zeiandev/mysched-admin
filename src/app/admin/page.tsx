@@ -21,12 +21,10 @@ type Status = {
   }
   hasUrl?: boolean
   hasKey?: boolean
-
-  // optional extras if your backend provides them (all safe-optional)
   metrics?: {
     activeAdmins?: number
     uptimeMs?: number
-    storagePct?: number // 0..100
+    storagePct?: number
     version?: string
   }
 }
@@ -50,9 +48,9 @@ const fmt = new Intl.DateTimeFormat(undefined, {
 })
 
 function formatTs(ts: string | null | undefined) {
-  if (!ts) return '—'
+  if (!ts) return 'N/A'
   const d = new Date(ts)
-  return Number.isNaN(d.getTime()) ? '—' : fmt.format(d)
+  return Number.isNaN(d.getTime()) ? 'N/A' : fmt.format(d)
 }
 
 function Spinner({ className = 'h-4 w-4' }: { className?: string }) {
@@ -63,7 +61,6 @@ function Spinner({ className = 'h-4 w-4' }: { className?: string }) {
     </svg>
   )
 }
-
 function Skeleton({ className }: { className: string }) {
   return <div className={`animate-pulse rounded-md bg-gray-200/70 ${className}`} />
 }
@@ -74,7 +71,6 @@ export default function AdminHome() {
   const [loading, setLoading] = useState<boolean>(true)
   const [apiLatency, setApiLatency] = useState<number | null>(null)
 
-  // recent changes (compact)
   const [feed, setFeed] = useState<AuditRow[]>([])
   const [feedLoading, setFeedLoading] = useState<boolean>(true)
 
@@ -119,23 +115,24 @@ export default function AdminHome() {
   const classesUpdated = useMemo(() => formatTs(s?.lastUpdate.classes), [s])
   const sectionsUpdated = useMemo(() => formatTs(s?.lastUpdate.sections), [s])
 
-  // compact notifications: config and errors
+  // Notifications (config + recent changes, not errors)
   const notifications: string[] = useMemo(() => {
     const notes: string[] = []
-    if (s?.counts.errors && s.counts.errors > 0) {
-      notes.push(`${s.counts.errors} change(s) in audit log recently`)
-    }
+    if (s?.counts.errors && s.counts.errors > 0) notes.push(`${s.counts.errors} change(s) in audit log recently`)
     if (s?.env?.supabaseEnvOk === false) notes.push('Supabase environment missing or invalid')
     if (!s?.env?.hasSupabaseUrl && s?.hasUrl === false) notes.push('Missing SUPABASE_URL')
     if (!s?.env?.hasSupabaseAnon && s?.hasKey === false) notes.push('Missing SUPABASE_ANON_KEY')
     return notes
   }, [s])
 
-  const metrics = s?.metrics
-  const activeAdmins = metrics?.activeAdmins ?? null
-  const uptimeMs = metrics?.uptimeMs ?? null
-  const version = metrics?.version ?? null
-  const storagePct = metrics?.storagePct
+  // Fallbacks to avoid “—”
+  const activeAdmins = s?.metrics?.activeAdmins ?? (s?.auth?.isAdmin ? 1 : 0)
+  const version =
+    (process.env.NEXT_PUBLIC_APP_VERSION as string | undefined) ??
+    s?.metrics?.version ??
+    (process.env.NODE_ENV === 'production' ? '1.0.0' : 'dev')
+  const storagePct = s?.metrics?.storagePct
+  const storageDisplay = storagePct != null ? `${Math.round(storagePct)}%` : 'Unknown'
 
   return (
     <main className="min-h-screen bg-white text-gray-900">
@@ -146,7 +143,6 @@ export default function AdminHome() {
           {loading ? <Spinner className="h-5 w-5 text-blue-600" /> : null}
         </div>
 
-        {/* Notifications */}
         {notifications.length > 0 && !loading && (
           <div className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <ul className="list-disc pl-5">
@@ -172,7 +168,9 @@ export default function AdminHome() {
                   <div className={`mt-1 text-2xl font-semibold ${s?.db.ok ? 'text-green-600' : 'text-red-600'}`}>
                     {s?.db.ok ? 'Healthy' : 'Error'}
                   </div>
-                  <div className="mt-1 text-sm text-gray-500">DB latency: {s ? `${s.db.latencyMs} ms` : '—'}</div>
+                  <div className="mt-1 text-sm text-gray-500">
+                    DB latency: {s ? `${s.db.latencyMs} ms` : apiLatency != null ? `${apiLatency} ms` : 'N/A'}
+                  </div>
                 </>
               )}
             </CardBody>
@@ -189,32 +187,26 @@ export default function AdminHome() {
               ) : (
                 <div className="mt-3 grid grid-cols-2 gap-y-2 text-[15px]">
                   <div>Classes</div>
-                  <div className="text-right font-medium">{s?.counts.classes ?? '—'}</div>
+                  <div className="text-right font-medium">{s?.counts.classes ?? 0}</div>
                   <div>Sections</div>
-                  <div className="text-right font-medium">{s?.counts.sections ?? '—'}</div>
+                  <div className="text-right font-medium">{s?.counts.sections ?? 0}</div>
                 </div>
               )}
             </CardBody>
           </Card>
 
-          {/* Audit Changes — informational blue */}
+          {/* Informational audit counter */}
           <Card>
             <CardBody>
               <div className="text-sm text-gray-600">Audit Changes</div>
               {loading ? (
                 <Skeleton className="mt-2 h-7 w-16" />
               ) : (
-                <div
-                  className={`mt-1 text-2xl font-semibold ${
-                    s && s.counts.errors > 0 ? 'text-blue-600' : 'text-gray-600'
-                  }`}
-                >
-                  {s ? s.counts.errors : '—'}
+                <div className={`mt-1 text-2xl font-semibold ${s && s.counts.errors > 0 ? 'text-blue-600' : 'text-gray-600'}`}>
+                  {s ? s.counts.errors : 0}
                 </div>
               )}
-              {!loading && (
-                <div className="mt-1 text-xs text-gray-500">Recorded changes in audit logs</div>
-              )}
+              {!loading && <div className="mt-1 text-xs text-gray-500">Recorded changes in audit logs</div>}
             </CardBody>
           </Card>
         </div>
@@ -224,7 +216,7 @@ export default function AdminHome() {
           <Card>
             <CardBody>
               <div className="text-sm text-gray-600">Active Admins</div>
-              {loading ? <Skeleton className="mt-2 h-6 w-16" /> : <div className="mt-1 text-xl">{activeAdmins ?? '—'}</div>}
+              {loading ? <Skeleton className="mt-2 h-6 w-16" /> : <div className="mt-1 text-xl">{activeAdmins}</div>}
             </CardBody>
           </Card>
           <Card>
@@ -233,24 +225,20 @@ export default function AdminHome() {
               {loading ? (
                 <Skeleton className="mt-2 h-6 w-20" />
               ) : (
-                <div className="mt-1 text-xl">{apiLatency != null ? `${apiLatency} ms` : '—'}</div>
+                <div className="mt-1 text-xl">{apiLatency != null ? `${apiLatency} ms` : 'N/A'}</div>
               )}
             </CardBody>
           </Card>
           <Card>
             <CardBody>
               <div className="text-sm text-gray-600">Version</div>
-              {loading ? <Skeleton className="mt-2 h-6 w-24" /> : <div className="mt-1 text-xl">{version ?? '—'}</div>}
+              {loading ? <Skeleton className="mt-2 h-6 w-24" /> : <div className="mt-1 text-xl">{version}</div>}
             </CardBody>
           </Card>
           <Card>
             <CardBody>
               <div className="text-sm text-gray-600">Storage</div>
-              {loading ? (
-                <Skeleton className="mt-2 h-6 w-24" />
-              ) : (
-                <div className="mt-1 text-xl">{storagePct != null ? `${Math.round(storagePct)}%` : '—'}</div>
-              )}
+              {loading ? <Skeleton className="mt-2 h-6 w-24" /> : <div className="mt-1 text-xl">{storageDisplay}</div>}
             </CardBody>
           </Card>
         </div>
@@ -268,7 +256,7 @@ export default function AdminHome() {
               ) : (
                 <div className="rounded-xl border border-gray-200 bg-white p-4">
                   <div>
-                    User: <span className="font-mono">{s?.auth?.userId || '—'}</span>
+                    User: <span className="font-mono">{s?.auth?.userId || 'N/A'}</span>
                   </div>
                   <div className="mt-1">
                     Admin:{' '}
@@ -333,7 +321,7 @@ export default function AdminHome() {
                       </span>
                       <span className="capitalize text-gray-800">{r.action ?? 'update'}</span>
                       <span className="text-gray-500">on</span>
-                      <span className="font-medium">{r.table_name ?? '—'}</span>
+                      <span className="font-medium">{r.table_name ?? 'N/A'}</span>
                       {r.row_id != null && (
                         <>
                           <span className="text-gray-500">row</span>
@@ -341,7 +329,7 @@ export default function AdminHome() {
                         </>
                       )}
                       <span className="text-gray-500">by</span>
-                      <span className="font-mono text-gray-800">{r.user_id ?? '—'}</span>
+                      <span className="font-mono text-gray-800">{r.user_id ?? 'N/A'}</span>
                     </div>
                   </li>
                 ))}
@@ -382,7 +370,7 @@ export default function AdminHome() {
                     'Refresh'
                   )}
                 </Button>
-                <span className="text-xs text-gray-500">as of {loading ? '—' : at || '—'}</span>
+                <span className="text-xs text-gray-500">as of {loading ? 'N/A' : at || 'N/A'}</span>
               </div>
             </div>
           </CardBody>
