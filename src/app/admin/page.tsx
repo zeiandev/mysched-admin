@@ -8,7 +8,7 @@ import AdminNav from '@/components/AdminNav'
 
 type Status = {
   db: { ok: boolean; latencyMs: number }
-  counts: { classes: number; sections: number; errors: number }
+  counts: { classes: number; sections: number; errors: number } // errors = audit entries (legacy)
   lastUpdate: { classes: string | null; sections: string | null }
   auth?: { ok: boolean; authed: boolean; userId: string | null; isAdmin: boolean }
   env?: {
@@ -34,8 +34,7 @@ const fmt = new Intl.DateTimeFormat(undefined, {
 function formatTs(ts: string | null) {
   if (!ts) return '—'
   const d = new Date(ts)
-  if (Number.isNaN(d.getTime())) return ts
-  return fmt.format(d)
+  return Number.isNaN(d.getTime()) ? ts : fmt.format(d)
 }
 
 function Spinner({ className = 'h-4 w-4' }: { className?: string }) {
@@ -51,6 +50,20 @@ function Skeleton({ className }: { className: string }) {
   return <div className={`animate-pulse rounded-md bg-gray-200/70 ${className}`} />
 }
 
+/** Derive real “alerts” from health signals. */
+function deriveAlerts(s: Status | null): string[] {
+  if (!s) return []
+  const alerts: string[] = []
+  if (!s.db.ok) alerts.push('Database unreachable')
+  if (s.db.latencyMs > 800) alerts.push(`High DB latency (${s.db.latencyMs} ms)`)
+  if (!s.env?.supabaseEnvOk) alerts.push('Supabase env vars invalid')
+  if (!s.env?.hasSupabaseUrl) alerts.push('Missing SUPABASE_URL')
+  if (!s.env?.hasSupabaseAnon) alerts.push('Missing SUPABASE_ANON_KEY')
+  if (!s.env?.hasSiteUrl) alerts.push('Missing SITE_URL')
+  if (!s.auth?.ok) alerts.push('Auth service not responding')
+  return alerts
+}
+
 export default function AdminHome() {
   const [s, setS] = useState<Status | null>(null)
   const [at, setAt] = useState<string>('')
@@ -60,7 +73,7 @@ export default function AdminHome() {
     setLoading(true)
     try {
       const res = await fetch('/api/status', { cache: 'no-store' })
-      const json = await res.json()
+      const json = (await res.json()) as Status
       setS(json)
       setAt(new Date().toLocaleTimeString())
     } finally {
@@ -77,6 +90,11 @@ export default function AdminHome() {
   const classesUpdated = useMemo(() => formatTs(s?.lastUpdate.classes ?? null), [s])
   const sectionsUpdated = useMemo(() => formatTs(s?.lastUpdate.sections ?? null), [s])
 
+  // Treat legacy counts.errors as “audit activity” instead of errors.
+  const auditActivity = s?.counts.errors ?? 0
+
+  const alerts = deriveAlerts(s)
+
   return (
     <main className="min-h-screen bg-white text-gray-900">
       <AdminNav />
@@ -86,14 +104,21 @@ export default function AdminHome() {
           {loading ? <Spinner className="h-5 w-5 text-blue-600" /> : null}
         </div>
 
-        {s && s.counts.errors > 0 && !loading ? (
-          <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
-            {s.counts.errors} error(s) detected. Check audit logs for details.
+        {/* System alerts (real health issues) */}
+        {!loading && alerts.length > 0 && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            <div className="font-semibold mb-1">System alerts</div>
+            <ul className="list-inside list-disc space-y-1">
+              {alerts.map((a, i) => (
+                <li key={i}>{a}</li>
+              ))}
+            </ul>
           </div>
-        ) : null}
+        )}
 
         {/* KPIs */}
         <div className="grid gap-6 sm:grid-cols-3">
+          {/* Database */}
           <Card>
             <CardBody>
               <div className="text-sm text-gray-600">Database</div>
@@ -113,6 +138,7 @@ export default function AdminHome() {
             </CardBody>
           </Card>
 
+          {/* Totals */}
           <Card>
             <CardBody>
               <div className="text-sm text-gray-600">Totals</div>
@@ -132,18 +158,23 @@ export default function AdminHome() {
             </CardBody>
           </Card>
 
+          {/* Audit activity (24h) */}
           <Card>
             <CardBody>
-              <div className="text-sm text-gray-600">Errors</div>
+              <div className="text-sm text-gray-600">Audit activity (24h)</div>
               {loading ? (
-                <Skeleton className="mt-2 h-7 w-16" />
+                <Skeleton className="mt-2 h-7 w-24" />
               ) : (
-                <div
-                  className={`mt-1 text-2xl font-semibold ${
-                    s && s.counts.errors > 0 ? 'text-red-600' : 'text-green-600'
-                  }`}
-                >
-                  {s ? s.counts.errors : '—'}
+                <div className={`mt-1 text-2xl font-semibold ${auditActivity > 0 ? 'text-blue-600' : 'text-gray-700'}`}>
+                  {auditActivity}
+                </div>
+              )}
+              {!loading && auditActivity > 0 && (
+                <div className="mt-2 text-xs text-gray-500">
+                  Changes recorded in audit log.{' '}
+                  <Link href="/admin/audit" className="text-blue-600 underline underline-offset-2">
+                    View
+                  </Link>
                 </div>
               )}
             </CardBody>
