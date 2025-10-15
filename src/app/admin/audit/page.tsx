@@ -1,19 +1,18 @@
 // src/app/admin/audit/page.tsx
 'use client'
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AdminNav from '@/components/AdminNav'
-import StatusTicker from '@/components/StatusTicker'
 import { Shell, Card, CardBody, Button, Input, Table, Th, Td } from '@/components/ui'
-import { api } from '@/lib/fetcher'
 
 type AuditRow = {
-  id?: number
-  created_at?: string
-  user_id?: string
-  table_name?: string
-  action?: string
-  row_id?: number | string | null
+  id: number
+  created_at: string
+  user_id: string | null
+  table_name: string | null
+  action: string | null
+  row_id: number | string | null
+  details?: unknown
 }
 
 const TABLES = [
@@ -22,65 +21,57 @@ const TABLES = [
   { v: 'sections', label: 'Sections' },
 ] as const
 
-function Spinner() {
-  return (
-    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4A4 4 0 008 12H4z" />
-    </svg>
-  )
-}
-
-const fmt = new Intl.DateTimeFormat(undefined, {
-  year: 'numeric',
-  month: 'short',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-})
-
 export default function AuditPage() {
   const [rows, setRows] = useState<AuditRow[]>([])
   const [table, setTable] = useState<string>('all')
   const [userId, setUserId] = useState<string>('')
   const [loading, setLoading] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
 
-  const deb = useRef<number | null>(null)
-  const userIdDebounced = useDebounced<string>(userId, 300, deb)
+  // debounced userId
+  const debRef = useRef<number | null>(null)
+  const userIdDebounced = useDebounced(userId, 300, debRef)
 
   const load = useCallback(async () => {
     setLoading(true)
+    setErr(null)
     try {
       const p = new URLSearchParams()
       if (table !== 'all') p.set('table', table)
       if (userIdDebounced.trim()) p.set('user_id', userIdDebounced.trim())
-      const url = p.toString() ? `/api/audit?${p}` : '/api/audit'
-      setRows(await api<AuditRow[]>(url))
+      // bust any caching aggressively
+      p.set('_', String(Date.now()))
+      const url = p.toString() ? `/api/audit?${p}` : `/api/audit?_=${Date.now()}`
+
+      const res = await fetch(url, { cache: 'no-store' })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = (await res.json()) as AuditRow[] | { rows: AuditRow[] }
+      const list = Array.isArray(data) ? data : data.rows ?? []
+      setRows(list)
+    } catch (e) {
+      setErr('Failed to load audit log')
+      setRows([])
     } finally {
       setLoading(false)
     }
   }, [table, userIdDebounced])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+  }, [load])
 
   const pretty = useMemo(
     () =>
-      rows.map(r => {
-        const d = r.created_at ? new Date(r.created_at) : null
-        return {
-          ...r,
-          created_display: d && !Number.isNaN(d.getTime()) ? fmt.format(d) : (r.created_at ?? ''),
-        }
-      }),
-    [rows],
+      rows.map((r) => ({
+        ...r,
+        created_display: r.created_at?.replace('T', ' ').replace('Z', '') ?? '',
+      })),
+    [rows]
   )
 
   return (
     <main className="min-h-screen bg-white text-gray-900">
       <AdminNav />
-      <StatusTicker />
-
       <div className="mx-auto max-w-6xl px-6 py-8">
         <Shell title="Audit Log">
           <Card>
@@ -88,32 +79,35 @@ export default function AuditPage() {
               <div className="mb-4 flex flex-wrap items-center gap-3">
                 <select
                   value={table}
-                  onChange={e => setTable(e.target.value)}
+                  onChange={(e) => setTable(e.target.value)}
                   className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm"
                 >
-                  {TABLES.map(t => (
-                    <option key={t.v} value={t.v}>{t.label}</option>
+                  {TABLES.map((t) => (
+                    <option key={t.v} value={t.v}>
+                      {t.label}
+                    </option>
                   ))}
                 </select>
 
                 <Input
                   placeholder="Filter by User ID"
                   value={userId}
-                  onChange={e => setUserId(e.target.value)}
+                  onChange={(e) => setUserId(e.target.value)}
                   className="w-56"
                 />
 
-                <Button onClick={load} className="ml-auto inline-flex items-center gap-2" disabled={loading}>
-                  {loading ? (<><Spinner /><span>Refreshing</span></>) : 'Reload'}
+                <Button onClick={load} className="ml-auto" disabled={loading}>
+                  {loading ? 'Loading…' : 'Reload'}
                 </Button>
               </div>
 
+              {err && <div className="py-3 text-sm text-red-600">{err}</div>}
               {loading && <div className="py-3 text-sm text-gray-500">Loading…</div>}
-              {!loading && pretty.length === 0 && (
+              {!loading && !err && pretty.length === 0 && (
                 <div className="py-6 text-sm text-gray-500">No audit entries found.</div>
               )}
 
-              {pretty.length > 0 && (
+              {!loading && !err && pretty.length > 0 && (
                 <>
                   <Table>
                     <thead>
@@ -123,26 +117,36 @@ export default function AuditPage() {
                         <Th>Table</Th>
                         <Th>Action</Th>
                         <Th>Row</Th>
+                        <Th>Details</Th>
                       </tr>
                     </thead>
                     <tbody>
-                      {pretty.map(r => (
-                        <tr
-                          key={r.id ?? `${r.table_name}-${r.created_at}-${r.row_id}`}
-                          className="odd:bg-white even:bg-gray-50"
-                        >
+                      {pretty.map((r) => (
+                        <tr key={r.id ?? `${r.table_name}-${r.created_at}-${r.row_id}`} className="odd:bg-white even:bg-gray-50">
                           <Td>{r.created_display}</Td>
-                          <Td><code className="text-xs">{r.user_id || '—'}</code></Td>
-                          <Td>{r.table_name}</Td>
-                          <Td className="capitalize">{r.action}</Td>
+                          <Td>
+                            <code className="text-xs">{r.user_id || '—'}</code>
+                          </Td>
+                          <Td>{r.table_name || '—'}</Td>
+                          <Td className="capitalize">{r.action || '—'}</Td>
                           <Td>{r.row_id ?? '—'}</Td>
+                          <Td>
+                            {/* show compact JSON if present */}
+                            {r.details ? (
+                              <pre className="max-w-[26rem] overflow-x-auto whitespace-pre-wrap break-words rounded bg-gray-50 p-2 text-[11px] text-gray-700">
+                                {safeStringify(r.details)}
+                              </pre>
+                            ) : (
+                              <span className="text-gray-400">—</span>
+                            )}
+                          </Td>
                         </tr>
                       ))}
                     </tbody>
                   </Table>
 
                   <div className="mt-3 text-xs text-gray-500">
-                    Showing {rows.length} item(s) · newest first · capped at 200.
+                    Showing {rows.length} item(s) · newest first · capped by the API.
                   </div>
                 </>
               )}
@@ -154,13 +158,23 @@ export default function AuditPage() {
   )
 }
 
-/* generic debounce helper with types */
+/* helpers */
 function useDebounced<T>(value: T, ms: number, ref: React.MutableRefObject<number | null>) {
-  const [v, setV] = useState<T>(value)
+  const [v, setV] = useState(value)
   useEffect(() => {
     if (ref.current) window.clearTimeout(ref.current)
     ref.current = window.setTimeout(() => setV(value), ms)
-    return () => { if (ref.current) window.clearTimeout(ref.current) }
+    return () => {
+      if (ref.current) window.clearTimeout(ref.current)
+    }
   }, [value, ms]) // eslint-disable-line react-hooks/exhaustive-deps
   return v
+}
+
+function safeStringify(v: unknown): string {
+  try {
+    return typeof v === 'string' ? v : JSON.stringify(v, null, 2)
+  } catch {
+    return String(v)
+  }
 }
