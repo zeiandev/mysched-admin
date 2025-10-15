@@ -5,7 +5,15 @@ export async function POST(req: Request) {
   const { event, session } = await req.json()
   const c = await cookies()
   const set = (name: string, value: string, maxAge: number) =>
-    c.set({ name, value, httpOnly: true, sameSite: 'lax', path: '/', maxAge })
+    c.set({
+      name,
+      value,
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge,
+      secure: process.env.NODE_ENV === 'production',
+    })
 
   if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
     set('sb-access-token', session?.access_token ?? '', 60 * 60 * 24 * 7)

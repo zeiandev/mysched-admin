@@ -21,10 +21,11 @@ function LoginInner() {
   const reason = qs.get('reason') || null
 
   const sb = useMemo(
-    () => createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    ),
+    () =>
+      createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      ),
     []
   )
 
@@ -52,7 +53,7 @@ function LoginInner() {
       body: JSON.stringify({ event: 'SIGNED_IN', session: data.session }),
     })
 
-    // client redirect + server verify; hard reload fallback avoids SPA stalls
+    // redirect + hard reload fallback so you don’t have to click elsewhere
     router.replace('/admin')
     router.refresh()
     setTimeout(() => {
