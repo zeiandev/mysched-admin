@@ -1,9 +1,11 @@
-// src/lib/require-admin.ts
 import { cookies } from 'next/headers'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 
-type AdminUser = { id: string; email?: string | null }
+interface AdminUser {
+  id: string
+  email?: string | null
+}
 
 /** Throws 401/403 if not an authenticated admin. */
 export async function requireAdmin(): Promise<AdminUser> {
@@ -11,7 +13,6 @@ export async function requireAdmin(): Promise<AdminUser> {
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   const service = process.env.SUPABASE_SERVICE_ROLE!
 
-  // Next 15: cookies() is async
   const store = await cookies()
 
   const sb = createServerClient(url, anon, {
@@ -30,12 +31,11 @@ export async function requireAdmin(): Promise<AdminUser> {
 
   const { data: u, error } = await sb.auth.getUser()
   if (error || !u?.user) {
-    const e: any = new Error('unauthorized')
-    e.status = 401
-    throw e
+    const err = new Error('unauthorized') as Error & { status?: number }
+    err.status = 401
+    throw err
   }
 
-  // Service-role check against admins table
   const svc = createClient(url, service, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
@@ -46,10 +46,10 @@ export async function requireAdmin(): Promise<AdminUser> {
     .maybeSingle()
 
   if (aerr || !row) {
-    const e: any = new Error('forbidden')
-    e.status = 403
-    throw e
+    const err = new Error('forbidden') as Error & { status?: number }
+    err.status = 403
+    throw err
   }
 
-  return { id: u.user.id, email: (u.user as any).email ?? null }
+  return { id: u.user.id, email: u.user.email ?? null }
 }
