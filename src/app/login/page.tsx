@@ -1,6 +1,7 @@
+// src/app/login/page.tsx
 'use client'
 
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 
@@ -19,47 +20,45 @@ function LoginInner() {
   const qs = useSearchParams()
   const reason = qs.get('reason') || null
 
-  const sb = useMemo(() => {
-    return createBrowserClient(
+  const sb = useMemo(
+    () => createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-  }, [])
-
-  // keep client-only rendering tidy
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
-  const subRef = useRef<ReturnType<typeof sb.auth.onAuthStateChange> | null>(null)
-
-  useEffect(() => {
-    subRef.current = sb.auth.onAuthStateChange(async (event, session) => {
-      await fetch('/auth/callback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ event, session }),
-      })
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        router.replace('/admin')
-      }
-    })
-    return () => subRef.current?.data.subscription.unsubscribe()
-  }, [sb, router])
+    ),
+    []
+  )
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [err, setErr] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const onSubmit = async (e: React.FormEvent) => {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     setErr(null)
     setLoading(true)
-    const { error } = await sb.auth.signInWithPassword({ email, password })
-    setLoading(false)
-    if (error) setErr(error.message)
-  }
 
-  if (!mounted) return null
+    const { data, error } = await sb.auth.signInWithPassword({ email, password })
+    if (error) {
+      setLoading(false)
+      setErr(error.message)
+      return
+    }
+
+    // sync tokens to HTTP-only cookies
+    await fetch('/auth/callback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event: 'SIGNED_IN', session: data.session }),
+    })
+
+    // client redirect + server verify; hard reload fallback avoids SPA stalls
+    router.replace('/admin')
+    router.refresh()
+    setTimeout(() => {
+      if (typeof window !== 'undefined') window.location.href = '/admin'
+    }, 50)
+  }
 
   return (
     <div style={{ maxWidth: 420, margin: '80px auto', padding: 24, border: '1px solid #555' }}>
