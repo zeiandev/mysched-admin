@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Shell, Card, CardBody, Button } from '@/components/ui'
+import { Card, CardBody, Button } from '@/components/ui'
 import SignOutButton from '@/components/SignOutButton'
 
 type Status = {
@@ -42,34 +42,25 @@ export default function AdminHome() {
   return (
     <main className="min-h-screen bg-white">
       <div className="mx-auto max-w-6xl px-6 py-8">
-        {/* Header with Logout */}
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
           <SignOutButton />
         </div>
 
-        {/* Error notice */}
         {s && s.counts.errors > 0 && (
           <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
             {s.counts.errors} error(s) detected. Check audit_log for details.
           </div>
         )}
 
-        {/* Summary Cards */}
         <div className="grid gap-4 sm:grid-cols-3">
           <Card>
             <CardBody>
               <div className="text-sm text-gray-600">Database</div>
-              <div
-                className={`text-2xl font-semibold ${
-                  s?.db.ok ? 'text-green-600' : 'text-red-600'
-                }`}
-              >
+              <div className={`text-2xl font-semibold ${s?.db.ok ? 'text-green-600' : 'text-red-600'}`}>
                 {s?.db.ok ? 'Healthy' : 'Error'}
               </div>
-              <div className="text-sm text-gray-500 mt-1">
-                Latency: {s ? `${s.db.latencyMs} ms` : '—'}
-              </div>
+              <div className="mt-1 text-sm text-gray-500">Latency: {s ? `${s.db.latencyMs} ms` : '—'}</div>
             </CardBody>
           </Card>
 
@@ -88,32 +79,25 @@ export default function AdminHome() {
           <Card>
             <CardBody>
               <div className="text-sm text-gray-600">Errors</div>
-              <div
-                className={`text-2xl font-semibold ${
-                  s && s.counts.errors > 0 ? 'text-red-600' : 'text-green-600'
-                }`}
-              >
+              <div className={`text-2xl font-semibold ${s && s.counts.errors > 0 ? 'text-red-600' : 'text-green-600'}`}>
                 {s ? s.counts.errors : '—'}
               </div>
             </CardBody>
           </Card>
         </div>
 
-        {/* Diagnostics */}
         <Card>
           <CardBody>
             <div className="text-sm text-gray-600 mb-2">Diagnostics</div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+            <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
               <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
                 <div className="text-gray-600 font-medium">Auth</div>
-                <div>User: <span className="font-mono">{s?.auth?.userId || '—'}</span></div>
+                <div>
+                  User: <span className="font-mono">{s?.auth?.userId || '—'}</span>
+                </div>
                 <div>
                   Admin:{' '}
-                  <span
-                    className={`font-semibold ${
-                      s?.auth?.isAdmin ? 'text-green-700' : 'text-red-700'
-                    }`}
-                  >
+                  <span className={`font-semibold ${s?.auth?.isAdmin ? 'text-green-700' : 'text-red-700'}`}>
                     {String(!!s?.auth?.isAdmin)}
                   </span>
                 </div>
@@ -123,11 +107,7 @@ export default function AdminHome() {
                 <div className="text-gray-600 font-medium">Environment</div>
                 <div>
                   Supabase OK:{' '}
-                  <span
-                    className={`font-semibold ${
-                      s?.env?.supabaseEnvOk ? 'text-green-700' : 'text-red-700'
-                    }`}
-                  >
+                  <span className={`font-semibold ${s?.env?.supabaseEnvOk ? 'text-green-700' : 'text-red-700'}`}>
                     {String(!!s?.env?.supabaseEnvOk)}
                   </span>
                 </div>
@@ -137,7 +117,7 @@ export default function AdminHome() {
 
               <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
                 <div className="text-gray-600 font-medium">Actions</div>
-                <div className="flex gap-2 mt-1">
+                <div className="mt-1 flex gap-2">
                   <Button onClick={load}>Reload</Button>
                 </div>
               </div>
@@ -145,15 +125,18 @@ export default function AdminHome() {
           </CardBody>
         </Card>
 
-        {/* Updates */}
         <Card>
           <CardBody>
             <div className="flex flex-wrap items-center justify-between">
               <div>
                 <div className="text-sm text-gray-600">Last Updates</div>
                 <div className="mt-1 text-sm">
-                  <div>Classes: <span className="font-medium">{s?.lastUpdate.classes ?? '—'}</span></div>
-                  <div>Sections: <span className="font-medium">{s?.lastUpdate.sections ?? '—'}</span></div>
+                  <div>
+                    Classes: <span className="font-medium">{s?.lastUpdate.classes ?? '—'}</span>
+                  </div>
+                  <div>
+                    Sections: <span className="font-medium">{s?.lastUpdate.sections ?? '—'}</span>
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -164,13 +147,16 @@ export default function AdminHome() {
           </CardBody>
         </Card>
 
-        {/* Manage */}
         <Card>
           <CardBody>
-            <div className="text-sm text-gray-600 mb-3">Manage</div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <Link href="/admin/classes"><Button className="w-full">Classes</Button></Link>
-              <Link href="/admin/sections"><Button className="w-full">Sections</Button></Link>
+            <div className="mb-3 text-sm text-gray-600">Manage</div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Link href="/admin/classes">
+                <Button className="w-full">Classes</Button>
+              </Link>
+              <Link href="/admin/sections">
+                <Button className="w-full">Sections</Button>
+              </Link>
               <SignOutButton />
             </div>
           </CardBody>
