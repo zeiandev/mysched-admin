@@ -1,41 +1,26 @@
-// Simple in-memory rate limiter (best-effort, single-instance only)
-// WINDOW_MS: window length; LIMIT: allowed operations per key per window.
-const WINDOW_MS = 60_000;
-const LIMIT = 60;
-type Entry = { n: number; t: number };
-const bucket: Map<string, Entry> = new Map();
+// src/lib/rate.ts
+/**
+ * Simple in-memory IP rate limiter. Returns normally if allowed.
+ * Throws a 429 error when exceeded (caller can transform to JSON).
+ * Does NOT log to audit_log; callers decide when to log.
+ */
+const WINDOW_MS = 15_000; // 15s window
+const LIMIT = 20;         // 20 ops per window per IP
 
-// Periodic cleanup to avoid unbounded memory growth. Removes entries
-// that haven't been touched for > 1 window.
-const CLEAN_INTERVAL = WINDOW_MS; // run once per window
-let cleanerStarted = false;
-function startCleaner() {
-  if (cleanerStarted) return;
-  cleanerStarted = true;
-  setInterval(() => {
-    const now = Date.now();
-    for (const [k, v] of bucket.entries()) {
-      if (now - v.t > WINDOW_MS) bucket.delete(k);
-    }
-  }, CLEAN_INTERVAL).unref?.();
-}
+type Entry = { count: number; reset: number }
+const bucket = new Map<string, Entry>()
 
-// Simple in-memory IP rate limiter (single process).
-// 60 requests / minute per IP.
 export function throttle(ip: string) {
-  startCleaner();
-  const key = ip || '0';
-  const now = Date.now();
-  const e = bucket.get(key);
-  if (!e || now - e.t > WINDOW_MS) {
-    bucket.set(key, { n: 1, t: now });
-    return;
+  const now = Date.now()
+  const rec = bucket.get(ip)
+  if (!rec || rec.reset < now) {
+    bucket.set(ip, { count: 1, reset: now + WINDOW_MS })
+    return
   }
-  e.n += 1;
-  if (e.n > LIMIT) throw new Error('rate-limit');
-}
-
-// Optional helper for tests / debugging
-export function _rateSnapshot() {
-  return Array.from(bucket.entries());
+  rec.count++
+  if (rec.count > LIMIT) {
+    const e = new Error('rate_limited') as Error & { status?: number }
+    e.status = 429
+    throw e
+  }
 }

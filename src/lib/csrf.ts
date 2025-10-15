@@ -1,41 +1,48 @@
 // src/lib/csrf.ts
-import { NextRequest } from 'next/server';
+import type { NextRequest } from 'next/server'
 
 /**
- * CSRF/Origin guard for state-changing requests.
- * - Allows same host (Origin host === Host)
- * - Also allows an explicit allowed origin from env
- *   (NEXT_PUBLIC_SITE_URL), plus localhost for dev
- * - Throws Error('bad-origin') on failure
+ * Accepts requests that are same-origin (by host) or match an allowed origin list.
+ * Works across localhost, Vercel preview, and prod custom domains.
  */
-export function assertSameOrigin(req: NextRequest) {
-  const m = req.method.toUpperCase();
-  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(m)) return; // only guard state-changing
+export function assertSameOrigin(req: NextRequest): void {
+  const url = req.nextUrl
+  const reqHost = url.host.toLowerCase()
 
-  const origin = req.headers.get('origin');
-  const host = req.headers.get('host');
-  const referer = req.headers.get('referer');
-  if (!host) throw new Error('bad-origin');
-  if (!origin && !referer) throw new Error('bad-origin');
+  // Build allowlist
+  const allow = new Set<string>()
+  // current host is always allowed (SSR / same-site POST)
+  allow.add(reqHost)
 
-  const allowed = process.env.NEXT_PUBLIC_SITE_URL?.toString();
-  const isDev = process.env.NODE_ENV !== 'production';
-
-  function ok(urlStr?: string | null) {
-    if (!urlStr) return false;
+  // Optional env allow-list (comma separated)
+  const extra =
+    process.env.NEXT_PUBLIC_SITE_URLS ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    ''
+  for (const v of extra.split(',').map(s => s.trim()).filter(Boolean)) {
     try {
-      const u = new URL(urlStr);
-      if (u.host === host) return true; // same host (scheme ignored)
-      if (isDev && u.hostname === 'localhost') return true; // permit localhost only in dev
-      if (allowed && u.origin === allowed) return true; // explicit allow from env
-      return false;
-    } catch {
-      return false;
-    }
+      allow.add(new URL(v).host.toLowerCase())
+    } catch {}
   }
 
-  if (!ok(origin) && !ok(referer)) throw new Error('bad-origin');
-}
+  // Check Origin, then Referer
+  const origin = req.headers.get('origin')
+  if (origin) {
+    try {
+      const oh = new URL(origin).host.toLowerCase()
+      if (allow.has(oh)) return
+    } catch {}
+  }
 
-// Optional backward-compatible export if some files used verifyCsrf
-export const verifyCsrf = assertSameOrigin;
+  const referer = req.headers.get('referer')
+  if (referer) {
+    try {
+      const rh = new URL(referer).host.toLowerCase()
+      if (allow.has(rh)) return
+    } catch {}
+  }
+
+  const e = new Error('csrf') as Error & { status?: number }
+  e.status = 403
+  throw e
+}
