@@ -197,6 +197,7 @@ export default function AdminHome() {
             </CardBody>
           </Card>
 
+          {/* Audit Changes — informational blue */}
           <Card>
             <CardBody>
               <div className="text-sm text-gray-600">Audit Changes</div>
@@ -205,11 +206,14 @@ export default function AdminHome() {
               ) : (
                 <div
                   className={`mt-1 text-2xl font-semibold ${
-                    s && s.counts.errors > 0 ? 'text-amber-600' : 'text-green-600'
+                    s && s.counts.errors > 0 ? 'text-blue-600' : 'text-gray-600'
                   }`}
                 >
                   {s ? s.counts.errors : '—'}
                 </div>
+              )}
+              {!loading && (
+                <div className="mt-1 text-xs text-gray-500">Recorded changes in audit logs</div>
               )}
             </CardBody>
           </Card>
