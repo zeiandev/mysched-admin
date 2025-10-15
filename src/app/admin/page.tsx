@@ -4,7 +4,6 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Card, CardBody, Button } from '@/components/ui'
-import SignOutButton from '@/components/SignOutButton'
 import AdminNav from '@/components/AdminNav'
 
 type Status = {
@@ -44,10 +43,7 @@ export default function AdminHome() {
     <main className="min-h-screen bg-white text-gray-900">
       <AdminNav />
       <div className="mx-auto max-w-6xl px-6 py-8">
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
-          <SignOutButton />
-        </div>
+        <h1 className="mb-6 text-2xl font-semibold">Dashboard</h1>
 
         {s && s.counts.errors > 0 && (
           <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -90,10 +86,10 @@ export default function AdminHome() {
 
         <Card>
           <CardBody>
-            <div className="text-sm text-gray-600 mb-2">Diagnostics</div>
+            <div className="mb-2 text-sm text-gray-600">Diagnostics</div>
             <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
               <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
-                <div className="text-gray-600 font-medium">Auth</div>
+                <div className="font-medium text-gray-600">Auth</div>
                 <div>
                   User: <span className="font-mono">{s?.auth?.userId || '—'}</span>
                 </div>
@@ -106,7 +102,7 @@ export default function AdminHome() {
               </div>
 
               <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
-                <div className="text-gray-600 font-medium">Environment</div>
+                <div className="font-medium text-gray-600">Environment</div>
                 <div>
                   Supabase OK:{' '}
                   <span className={`font-semibold ${s?.env?.supabaseEnvOk ? 'text-green-700' : 'text-red-700'}`}>
@@ -118,7 +114,7 @@ export default function AdminHome() {
               </div>
 
               <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
-                <div className="text-gray-600 font-medium">Actions</div>
+                <div className="font-medium text-gray-600">Actions</div>
                 <div className="mt-1 flex gap-2">
                   <Button onClick={load}>Reload</Button>
                 </div>
@@ -152,7 +148,7 @@ export default function AdminHome() {
         <Card>
           <CardBody>
             <div className="mb-3 text-sm text-gray-600">Manage</div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <Link href="/admin/classes">
                 <Button className="w-full">Classes</Button>
               </Link>
@@ -162,9 +158,6 @@ export default function AdminHome() {
               <Link href="/admin/audit">
                 <Button className="w-full">Audit Logs</Button>
               </Link>
-              <div className="col-span-2 flex justify-end">
-                <SignOutButton />
-              </div>
             </div>
           </CardBody>
         </Card>
