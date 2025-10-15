@@ -9,9 +9,20 @@ function bad(message: string, status = 400, details?: unknown) {
 
 export const dynamic = 'force-dynamic'
 
+type AuditDbRow = {
+  id: number
+  at?: string
+  created_at?: string
+  user_id: string | null
+  table_name: string | null
+  action: string | null
+  row_id: number | string | null
+  details?: unknown
+}
+
 export async function GET(req: NextRequest) {
   try {
-    await requireAdmin() // admin only
+    await requireAdmin()
 
     const sp = new URL(req.url).searchParams
     const table = sp.get('table')
@@ -20,41 +31,36 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(200, limitRaw > 0 ? limitRaw : 200)
 
     const svc = sbService()
-    const selectCols = 'id, at, user_id, table_name, action, row_id, details'
+    const colsPreferred = 'id, at, user_id, table_name, action, row_id, details'
 
-    // base query
-    let q = svc.from('audit_log').select(selectCols).limit(limit)
-
+    let q = svc.from('audit_log').select(colsPreferred).limit(limit)
     if (table && table !== 'all') q = q.eq('table_name', table)
     if (user_id) q = q.eq('user_id', user_id)
 
-    // order by preferred column "at" first
-    let { data, error } = await q.order('at', { ascending: false })
+    const resp = await q.order('at', { ascending: false })
+    let rows: AuditDbRow[] | null = (resp.data as AuditDbRow[] | null) ?? null
+    const err1 = resp.error
 
-    // fallback if "at" is missing in some envs
-    if (error?.code === '42703' /* undefined column */) {
-      const selectColsFallback = 'id, created_at, user_id, table_name, action, row_id, details'
-      let q2 = svc.from('audit_log').select(selectColsFallback).limit(limit)
+    // Fallback if "at" column is not present in this environment
+    if (err1 && err1.code === '42703') {
+      const colsFallback = 'id, created_at, user_id, table_name, action, row_id, details'
+      let q2 = svc.from('audit_log').select(colsFallback).limit(limit)
       if (table && table !== 'all') q2 = q2.eq('table_name', table)
       if (user_id) q2 = q2.eq('user_id', user_id)
-      const r2 = await q2.order('created_at', { ascending: false })
-      if (r2.error) return bad('Failed to load audit log', 500)
-      // normalize created_at -> at so the UI code stays simple
-      data =
-        r2.data?.map((r: any) => ({
-          id: r.id,
-          at: r.created_at,
-          user_id: r.user_id,
-          table_name: r.table_name,
-          action: r.action,
-          row_id: r.row_id,
-          details: r.details,
-        })) ?? []
-      return NextResponse.json(data)
+
+      const resp2 = await q2.order('created_at', { ascending: false })
+      if (resp2.error) return bad('Failed to load audit log', 500)
+
+      const raw = (resp2.data as AuditDbRow[] | null) ?? []
+      rows = raw.map((r) => ({
+        ...r,
+        at: r.at ?? r.created_at, // normalize for the UI
+      }))
+      return NextResponse.json(rows ?? [])
     }
 
-    if (error) return bad('Failed to load audit log', 500)
-    return NextResponse.json(data ?? [])
+    if (err1) return bad('Failed to load audit log', 500)
+    return NextResponse.json(rows ?? [])
   } catch (e: unknown) {
     const msg = (e as { message?: string } | null)?.message
     if (msg === 'unauthorized') return bad('Unauthorized', 401)

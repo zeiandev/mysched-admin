@@ -1,14 +1,14 @@
 // src/app/admin/audit/page.tsx
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import AdminNav from '@/components/AdminNav'
 import { Shell, Card, CardBody, Button, Input, Table, Th, Td } from '@/components/ui'
 
 type AuditRowRaw = {
   id?: number
-  at?: string            // <- your schema
-  created_at?: string    // fallback if API returns this
+  at?: string
+  created_at?: string
   user_id?: string | null
   table_name?: string | null
   action?: string | null
@@ -55,7 +55,7 @@ export default function AuditPage() {
       const payload = (await res.json()) as AuditRowRaw[] | { rows: AuditRowRaw[] }
       const list = Array.isArray(payload) ? payload : payload.rows ?? []
       const mapped: AuditRow[] = list.map((r, i) => ({
-        id: r.id ?? i, // ensure key
+        id: r.id ?? i,
         ts: formatTs(r.at ?? r.created_at ?? ''),
         user_id: r.user_id ?? null,
         table_name: r.table_name ?? null,
