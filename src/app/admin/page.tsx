@@ -1,3 +1,4 @@
+// src/app/admin/page.tsx
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
@@ -103,16 +104,10 @@ export default function AdminHome() {
                 </>
               ) : (
                 <>
-                  <div
-                    className={`mt-1 text-2xl font-semibold ${
-                      s?.db.ok ? 'text-green-600' : 'text-red-600'
-                    }`}
-                  >
+                  <div className={`mt-1 text-2xl font-semibold ${s?.db.ok ? 'text-green-600' : 'text-red-600'}`}>
                     {s?.db.ok ? 'Healthy' : 'Error'}
                   </div>
-                  <div className="mt-1 text-sm text-gray-500">
-                    Latency: {s ? `${s.db.latencyMs} ms` : '—'}
-                  </div>
+                  <div className="mt-1 text-sm text-gray-500">Latency: {s ? `${s.db.latencyMs} ms` : '—'}</div>
                 </>
               )}
             </CardBody>
@@ -172,11 +167,7 @@ export default function AdminHome() {
                   </div>
                   <div className="mt-1">
                     Admin:{' '}
-                    <span
-                      className={`font-semibold ${
-                        s?.auth?.isAdmin ? 'text-green-700' : 'text-red-700'
-                      }`}
-                    >
+                    <span className={`font-semibold ${s?.auth?.isAdmin ? 'text-green-700' : 'text-red-700'}`}>
                       {String(!!s?.auth?.isAdmin)}
                     </span>
                   </div>
@@ -198,11 +189,7 @@ export default function AdminHome() {
                 <div className="rounded-xl border border-gray-200 bg-white p-4">
                   <div>
                     Supabase OK:{' '}
-                    <span
-                      className={`font-semibold ${
-                        s?.env?.supabaseEnvOk ? 'text-green-700' : 'text-red-700'
-                      }`}
-                    >
+                    <span className={`font-semibold ${s?.env?.supabaseEnvOk ? 'text-green-700' : 'text-red-700'}`}>
                       {String(!!s?.env?.supabaseEnvOk)}
                     </span>
                   </div>
@@ -257,20 +244,14 @@ export default function AdminHome() {
           <CardBody>
             <div className="mb-3 text-sm text-gray-600">Manage</div>
             <div className="grid gap-3 sm:grid-cols-3">
-              <Link href="/admin/classes" className="contents">
-                <Button className="w-full" disabled={loading}>
-                  {loading ? <span className="inline-flex items-center gap-2"><Spinner /> Loading</span> : 'Classes'}
-                </Button>
+              <Link href="/admin/classes">
+                <Button className="w-full">Classes</Button>
               </Link>
-              <Link href="/admin/sections" className="contents">
-                <Button className="w-full" disabled={loading}>
-                  {loading ? <span className="inline-flex items-center gap-2"><Spinner /> Loading</span> : 'Sections'}
-                </Button>
+              <Link href="/admin/sections">
+                <Button className="w-full">Sections</Button>
               </Link>
-              <Link href="/admin/audit" className="contents">
-                <Button className="w-full" disabled={loading}>
-                  {loading ? <span className="inline-flex items-center gap-2"><Spinner /> Loading</span> : 'Audit Logs'}
-                </Button>
+              <Link href="/admin/audit">
+                <Button className="w-full">Audit Logs</Button>
               </Link>
             </div>
           </CardBody>
