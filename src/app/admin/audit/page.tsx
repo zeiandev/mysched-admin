@@ -16,7 +16,8 @@ type AuditRowRaw = {
   details?: unknown
 }
 
-type AuditRow = Required<Pick<AuditRowRaw, 'id'>> & {
+type AuditRow = {
+  id: number
   ts: string
   user_id: string | null
   table_name: string | null
@@ -37,6 +38,7 @@ export default function AuditPage() {
   const [userId, setUserId] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const [openIds, setOpenIds] = useState<Set<number>>(new Set())
 
   const debRef = useRef<number | null>(null)
   const userIdDebounced = useDebounced(userId, 300, debRef)
@@ -76,6 +78,13 @@ export default function AuditPage() {
     load()
   }, [load])
 
+  const toggle = (id: number) =>
+    setOpenIds(prev => {
+      const n = new Set(prev)
+      n.has(id) ? n.delete(id) : n.add(id)
+      return n
+    })
+
   return (
     <main className="min-h-screen bg-white text-gray-900">
       <AdminNav />
@@ -90,9 +99,7 @@ export default function AuditPage() {
                   className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm"
                 >
                   {TABLES.map((t) => (
-                    <option key={t.v} value={t.v}>
-                      {t.label}
-                    </option>
+                    <option key={t.v} value={t.v}>{t.label}</option>
                   ))}
                 </select>
 
@@ -124,35 +131,74 @@ export default function AuditPage() {
                         <Th>Table</Th>
                         <Th>Action</Th>
                         <Th>Row</Th>
+                        <Th>Summary</Th>
                         <Th>Details</Th>
                       </tr>
                     </thead>
                     <tbody>
-                      {rows.map((r) => (
-                        <tr key={r.id} className="odd:bg-white even:bg-gray-50">
-                          <Td>{r.ts}</Td>
-                          <Td>
-                            <code className="text-xs">{r.user_id || '—'}</code>
-                          </Td>
-                          <Td>{r.table_name || '—'}</Td>
-                          <Td className="capitalize">{r.action || '—'}</Td>
-                          <Td>{r.row_id ?? '—'}</Td>
-                          <Td>
-                            {r.details ? (
-                              <pre className="max-w-[26rem] overflow-x-auto whitespace-pre-wrap break-words rounded bg-gray-50 p-2 text-[11px] text-gray-700">
-                                {safeStringify(r.details)}
-                              </pre>
-                            ) : (
-                              <span className="text-gray-400">—</span>
-                            )}
-                          </Td>
-                        </tr>
-                      ))}
+                      {rows.map((r) => {
+                        const parsed = parseDetails(r.details)
+                        const summary = buildSummary(parsed)
+
+                        return (
+                          <tr key={r.id} className="align-top odd:bg-white even:bg-gray-50">
+                            <Td className="whitespace-nowrap">{r.ts}</Td>
+                            <Td>
+                              <code className="rounded bg-gray-100 px-1 py-0.5 text-xs">
+                                {shorten(r.user_id)}
+                              </code>
+                            </Td>
+                            <Td>
+                              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs">
+                                {r.table_name || '—'}
+                              </span>
+                            </Td>
+                            <Td>{actionBadge(r.action)}</Td>
+                            <Td>
+                              <code className="rounded bg-gray-100 px-1 py-0.5 text-xs">
+                                {r.row_id ?? '—'}
+                              </code>
+                            </Td>
+                            <Td>
+                              {summary.length ? (
+                                <div className="flex max-w-[22rem] flex-wrap gap-1">
+                                  {summary.map((k) => (
+                                    <span
+                                      key={k}
+                                      className="rounded-md bg-blue-50 px-2 py-0.5 text-xs text-blue-700"
+                                    >
+                                      {k}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-gray-500">—</span>
+                              )}
+                            </Td>
+                            <Td>
+                              <Button
+                                onClick={() => toggle(r.id)}
+                                className="px-3 py-1 text-sm"
+                                variant="secondary"
+                              >
+                                {openIds.has(r.id) ? 'Hide' : 'View'}
+                              </Button>
+                              {openIds.has(r.id) && (
+                                <div className="mt-2 max-w-[36rem] overflow-x-auto rounded-lg border border-gray-200 bg-gray-50 p-3">
+                                  <pre className="whitespace-pre-wrap break-words text-[11.5px] leading-snug text-gray-800">
+                                    {pretty(parsed)}
+                                  </pre>
+                                </div>
+                              )}
+                            </Td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </Table>
 
                   <div className="mt-3 text-xs text-gray-500">
-                    Showing {rows.length} item(s) · newest first · capped by the API.
+                    Showing {rows.length} item(s). Newest first.
                   </div>
                 </>
               )}
@@ -165,6 +211,7 @@ export default function AuditPage() {
 }
 
 /* helpers */
+
 function useDebounced<T>(value: T, ms: number, ref: React.MutableRefObject<number | null>) {
   const [v, setV] = useState(value)
   useEffect(() => {
@@ -191,10 +238,68 @@ function formatTs(ts: string) {
   return Number.isNaN(d.getTime()) ? '—' : fmt.format(d)
 }
 
-function safeStringify(v: unknown): string {
+function shorten(id: string | null) {
+  if (!id) return '—'
+  if (id.length <= 10) return id
+  return `${id.slice(0, 6)}…${id.slice(-4)}`
+}
+
+function actionBadge(action: string | null) {
+  const a = (action || '').toUpperCase()
+  const base = 'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium'
+  if (a === 'INSERT' || a === 'CREATE')
+    return <span className={`${base} bg-green-50 text-green-700`}>CREATE</span>
+  if (a === 'UPDATE')
+    return <span className={`${base} bg-blue-50 text-blue-700`}>UPDATE</span>
+  if (a === 'DELETE' || a === 'REMOVE')
+    return <span className={`${base} bg-red-50 text-red-700`}>DELETE</span>
+  return <span className={`${base} bg-gray-100 text-gray-700`}>{a || '—'}</span>
+}
+
+function parseDetails(v: unknown): unknown {
+  if (typeof v === 'string') {
+    try {
+      return JSON.parse(v)
+    } catch {
+      return v
+    }
+  }
+  return v
+}
+
+function pretty(v: unknown): string {
   try {
     return typeof v === 'string' ? v : JSON.stringify(v, null, 2)
   } catch {
     return String(v)
   }
+}
+
+/** Build a compact summary list of interesting fields for chips */
+function buildSummary(v: unknown): string[] {
+  if (!v || typeof v !== 'object') return []
+  const obj = v as Record<string, unknown>
+
+  // Prefer domain fields if present
+  const interesting = [
+    'title',
+    'code',
+    'section_id',
+    'day',
+    'start',
+    'start_time',
+    'end',
+    'end_time',
+    'room',
+    'instructor',
+    'units',
+  ]
+
+  const keys = Object.keys(obj)
+  const chosen = keys.filter((k) => interesting.includes(k))
+  if (chosen.length) return chosen
+
+  // Fallback: show first few keys, excluding noisy metadata
+  const exclude = new Set(['id', 'user_id', 'created_at', 'updated_at', 'at'])
+  return keys.filter((k) => !exclude.has(k)).slice(0, 6)
 }
