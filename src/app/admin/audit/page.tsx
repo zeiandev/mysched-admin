@@ -7,7 +7,8 @@ import { Shell, Card, CardBody, Button, Input, Table, Th, Td } from '@/component
 
 type AuditRowRaw = {
   id?: number
-  at?: string
+  at?: string            // <- your schema
+  created_at?: string    // fallback if API returns this
   user_id?: string | null
   table_name?: string | null
   action?: string | null
@@ -15,8 +16,7 @@ type AuditRowRaw = {
   details?: unknown
 }
 
-type AuditRow = {
-  id: number
+type AuditRow = Required<Pick<AuditRowRaw, 'id'>> & {
   ts: string
   user_id: string | null
   table_name: string | null
@@ -48,28 +48,23 @@ export default function AuditPage() {
       const p = new URLSearchParams()
       if (table !== 'all') p.set('table', table)
       if (userIdDebounced.trim()) p.set('user_id', userIdDebounced.trim())
-      p.set('_', String(Date.now())) // bust cache
-
-      const res = await fetch(`/api/audit?${p.toString()}`, { cache: 'no-store' })
+      p.set('_', String(Date.now()))
+      const url = p.toString() ? `/api/audit?${p}` : `/api/audit?_=${Date.now()}`
+      const res = await fetch(url, { cache: 'no-store' })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const payload = await res.json()
-
-      // handle both array or { rows: [] } responses
+      const payload = (await res.json()) as AuditRowRaw[] | { rows: AuditRowRaw[] }
       const list = Array.isArray(payload) ? payload : payload.rows ?? []
-
-      const mapped: AuditRow[] = list.map((r: AuditRowRaw, i: number) => ({
-        id: r.id ?? i,
-        ts: formatTs(r.at ?? ''),
+      const mapped: AuditRow[] = list.map((r, i) => ({
+        id: r.id ?? i, // ensure key
+        ts: formatTs(r.at ?? r.created_at ?? ''),
         user_id: r.user_id ?? null,
         table_name: r.table_name ?? null,
         action: r.action ?? null,
         row_id: r.row_id ?? null,
         details: r.details,
       }))
-
       setRows(mapped)
-    } catch (e) {
-      console.error(e)
+    } catch {
       setErr('Failed to load audit log')
       setRows([])
     } finally {
@@ -81,8 +76,6 @@ export default function AuditPage() {
     load()
   }, [load])
 
-  const pretty = useMemo(() => rows, [rows])
-
   return (
     <main className="min-h-screen bg-white text-gray-900">
       <AdminNav />
@@ -90,7 +83,6 @@ export default function AuditPage() {
         <Shell title="Audit Log">
           <Card>
             <CardBody>
-              {/* Filters */}
               <div className="mb-4 flex flex-wrap items-center gap-3">
                 <select
                   value={table}
@@ -116,14 +108,12 @@ export default function AuditPage() {
                 </Button>
               </div>
 
-              {/* Feedback states */}
               {err && <div className="py-3 text-sm text-red-600">{err}</div>}
               {loading && <div className="py-3 text-sm text-gray-500">Loading…</div>}
               {!loading && !err && rows.length === 0 && (
                 <div className="py-6 text-sm text-gray-500">No audit entries found.</div>
               )}
 
-              {/* Table */}
               {!loading && !err && rows.length > 0 && (
                 <>
                   <Table>
@@ -138,7 +128,7 @@ export default function AuditPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {pretty.map((r) => (
+                      {rows.map((r) => (
                         <tr key={r.id} className="odd:bg-white even:bg-gray-50">
                           <Td>{r.ts}</Td>
                           <Td>
@@ -162,7 +152,7 @@ export default function AuditPage() {
                   </Table>
 
                   <div className="mt-3 text-xs text-gray-500">
-                    Showing {rows.length} item(s) · newest first · capped by API.
+                    Showing {rows.length} item(s) · newest first · capped by the API.
                   </div>
                 </>
               )}
@@ -174,7 +164,7 @@ export default function AuditPage() {
   )
 }
 
-/* ---------- Helpers ---------- */
+/* helpers */
 function useDebounced<T>(value: T, ms: number, ref: React.MutableRefObject<number | null>) {
   const [v, setV] = useState(value)
   useEffect(() => {
@@ -197,7 +187,6 @@ const fmt = new Intl.DateTimeFormat(undefined, {
 })
 
 function formatTs(ts: string) {
-  if (!ts) return '—'
   const d = new Date(ts)
   return Number.isNaN(d.getTime()) ? '—' : fmt.format(d)
 }
