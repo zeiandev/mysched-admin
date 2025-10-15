@@ -3,12 +3,12 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Card, CardBody, Button } from '@/components/ui'
 import AdminNav from '@/components/AdminNav'
+import { Card, CardBody, Button } from '@/components/ui'
 
 type Status = {
   db: { ok: boolean; latencyMs: number }
-  counts: { classes: number; sections: number; errors: number } // errors = audit entries (legacy)
+  counts: { classes: number; sections: number; errors: number }
   lastUpdate: { classes: string | null; sections: string | null }
   auth?: { ok: boolean; authed: boolean; userId: string | null; isAdmin: boolean }
   env?: {
@@ -21,6 +21,24 @@ type Status = {
   }
   hasUrl?: boolean
   hasKey?: boolean
+
+  // optional extras if your backend provides them (all safe-optional)
+  metrics?: {
+    activeAdmins?: number
+    uptimeMs?: number
+    storagePct?: number // 0..100
+    version?: string
+  }
+}
+
+type AuditRow = {
+  id?: number
+  at?: string
+  created_at?: string
+  user_id?: string | null
+  table_name?: string | null
+  action?: string | null
+  row_id?: number | string | null
 }
 
 const fmt = new Intl.DateTimeFormat(undefined, {
@@ -31,10 +49,10 @@ const fmt = new Intl.DateTimeFormat(undefined, {
   minute: '2-digit',
 })
 
-function formatTs(ts: string | null) {
+function formatTs(ts: string | null | undefined) {
   if (!ts) return '—'
   const d = new Date(ts)
-  return Number.isNaN(d.getTime()) ? ts : fmt.format(d)
+  return Number.isNaN(d.getTime()) ? '—' : fmt.format(d)
 }
 
 function Spinner({ className = 'h-4 w-4' }: { className?: string }) {
@@ -50,50 +68,74 @@ function Skeleton({ className }: { className: string }) {
   return <div className={`animate-pulse rounded-md bg-gray-200/70 ${className}`} />
 }
 
-/** Derive real “alerts” from health signals. */
-function deriveAlerts(s: Status | null): string[] {
-  if (!s) return []
-  const alerts: string[] = []
-  if (!s.db.ok) alerts.push('Database unreachable')
-  if (s.db.latencyMs > 800) alerts.push(`High DB latency (${s.db.latencyMs} ms)`)
-  if (!s.env?.supabaseEnvOk) alerts.push('Supabase env vars invalid')
-  if (!s.env?.hasSupabaseUrl) alerts.push('Missing SUPABASE_URL')
-  if (!s.env?.hasSupabaseAnon) alerts.push('Missing SUPABASE_ANON_KEY')
-  if (!s.env?.hasSiteUrl) alerts.push('Missing SITE_URL')
-  if (!s.auth?.ok) alerts.push('Auth service not responding')
-  return alerts
-}
-
 export default function AdminHome() {
   const [s, setS] = useState<Status | null>(null)
   const [at, setAt] = useState<string>('')
   const [loading, setLoading] = useState<boolean>(true)
+  const [apiLatency, setApiLatency] = useState<number | null>(null)
+
+  // recent changes (compact)
+  const [feed, setFeed] = useState<AuditRow[]>([])
+  const [feedLoading, setFeedLoading] = useState<boolean>(true)
 
   const load = async () => {
     setLoading(true)
     try {
+      const t0 = performance.now()
       const res = await fetch('/api/status', { cache: 'no-store' })
-      const json = (await res.json()) as Status
+      const json: Status = await res.json()
       setS(json)
       setAt(new Date().toLocaleTimeString())
+      const t1 = performance.now()
+      setApiLatency(Math.round(t1 - t0))
     } finally {
       setLoading(false)
     }
   }
 
+  const loadFeed = async () => {
+    setFeedLoading(true)
+    try {
+      const res = await fetch('/api/audit?limit=5', { cache: 'no-store' })
+      const rows = (await res.json()) as AuditRow[] | { rows: AuditRow[] }
+      setFeed(Array.isArray(rows) ? rows : rows.rows ?? [])
+    } catch {
+      setFeed([])
+    } finally {
+      setFeedLoading(false)
+    }
+  }
+
   useEffect(() => {
     load()
-    const id = setInterval(load, 30000)
+    loadFeed()
+    const id = setInterval(() => {
+      load()
+      loadFeed()
+    }, 30000)
     return () => clearInterval(id)
   }, [])
 
-  const classesUpdated = useMemo(() => formatTs(s?.lastUpdate.classes ?? null), [s])
-  const sectionsUpdated = useMemo(() => formatTs(s?.lastUpdate.sections ?? null), [s])
+  const classesUpdated = useMemo(() => formatTs(s?.lastUpdate.classes), [s])
+  const sectionsUpdated = useMemo(() => formatTs(s?.lastUpdate.sections), [s])
 
-  // Treat legacy counts.errors as “audit activity” instead of errors.
-  const auditActivity = s?.counts.errors ?? 0
+  // compact notifications: config and errors
+  const notifications: string[] = useMemo(() => {
+    const notes: string[] = []
+    if (s?.counts.errors && s.counts.errors > 0) {
+      notes.push(`${s.counts.errors} change(s) in audit log recently`)
+    }
+    if (s?.env?.supabaseEnvOk === false) notes.push('Supabase environment missing or invalid')
+    if (!s?.env?.hasSupabaseUrl && s?.hasUrl === false) notes.push('Missing SUPABASE_URL')
+    if (!s?.env?.hasSupabaseAnon && s?.hasKey === false) notes.push('Missing SUPABASE_ANON_KEY')
+    return notes
+  }, [s])
 
-  const alerts = deriveAlerts(s)
+  const metrics = s?.metrics
+  const activeAdmins = metrics?.activeAdmins ?? null
+  const uptimeMs = metrics?.uptimeMs ?? null
+  const version = metrics?.version ?? null
+  const storagePct = metrics?.storagePct
 
   return (
     <main className="min-h-screen bg-white text-gray-900">
@@ -104,13 +146,12 @@ export default function AdminHome() {
           {loading ? <Spinner className="h-5 w-5 text-blue-600" /> : null}
         </div>
 
-        {/* System alerts (real health issues) */}
-        {!loading && alerts.length > 0 && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-            <div className="font-semibold mb-1">System alerts</div>
-            <ul className="list-inside list-disc space-y-1">
-              {alerts.map((a, i) => (
-                <li key={i}>{a}</li>
+        {/* Notifications */}
+        {notifications.length > 0 && !loading && (
+          <div className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <ul className="list-disc pl-5">
+              {notifications.map((n, i) => (
+                <li key={i}>{n}</li>
               ))}
             </ul>
           </div>
@@ -118,7 +159,6 @@ export default function AdminHome() {
 
         {/* KPIs */}
         <div className="grid gap-6 sm:grid-cols-3">
-          {/* Database */}
           <Card>
             <CardBody>
               <div className="text-sm text-gray-600">Database</div>
@@ -132,13 +172,12 @@ export default function AdminHome() {
                   <div className={`mt-1 text-2xl font-semibold ${s?.db.ok ? 'text-green-600' : 'text-red-600'}`}>
                     {s?.db.ok ? 'Healthy' : 'Error'}
                   </div>
-                  <div className="mt-1 text-sm text-gray-500">Latency: {s ? `${s.db.latencyMs} ms` : '—'}</div>
+                  <div className="mt-1 text-sm text-gray-500">DB latency: {s ? `${s.db.latencyMs} ms` : '—'}</div>
                 </>
               )}
             </CardBody>
           </Card>
 
-          {/* Totals */}
           <Card>
             <CardBody>
               <div className="text-sm text-gray-600">Totals</div>
@@ -158,24 +197,55 @@ export default function AdminHome() {
             </CardBody>
           </Card>
 
-          {/* Audit activity (24h) */}
           <Card>
             <CardBody>
-              <div className="text-sm text-gray-600">Audit activity (24h)</div>
+              <div className="text-sm text-gray-600">Audit Changes</div>
               {loading ? (
-                <Skeleton className="mt-2 h-7 w-24" />
+                <Skeleton className="mt-2 h-7 w-16" />
               ) : (
-                <div className={`mt-1 text-2xl font-semibold ${auditActivity > 0 ? 'text-blue-600' : 'text-gray-700'}`}>
-                  {auditActivity}
+                <div
+                  className={`mt-1 text-2xl font-semibold ${
+                    s && s.counts.errors > 0 ? 'text-amber-600' : 'text-green-600'
+                  }`}
+                >
+                  {s ? s.counts.errors : '—'}
                 </div>
               )}
-              {!loading && auditActivity > 0 && (
-                <div className="mt-2 text-xs text-gray-500">
-                  Changes recorded in audit log.{' '}
-                  <Link href="/admin/audit" className="text-blue-600 underline underline-offset-2">
-                    View
-                  </Link>
-                </div>
+            </CardBody>
+          </Card>
+        </div>
+
+        {/* Compact metrics row */}
+        <div className="grid gap-6 sm:grid-cols-4">
+          <Card>
+            <CardBody>
+              <div className="text-sm text-gray-600">Active Admins</div>
+              {loading ? <Skeleton className="mt-2 h-6 w-16" /> : <div className="mt-1 text-xl">{activeAdmins ?? '—'}</div>}
+            </CardBody>
+          </Card>
+          <Card>
+            <CardBody>
+              <div className="text-sm text-gray-600">API Latency</div>
+              {loading ? (
+                <Skeleton className="mt-2 h-6 w-20" />
+              ) : (
+                <div className="mt-1 text-xl">{apiLatency != null ? `${apiLatency} ms` : '—'}</div>
+              )}
+            </CardBody>
+          </Card>
+          <Card>
+            <CardBody>
+              <div className="text-sm text-gray-600">Version</div>
+              {loading ? <Skeleton className="mt-2 h-6 w-24" /> : <div className="mt-1 text-xl">{version ?? '—'}</div>}
+            </CardBody>
+          </Card>
+          <Card>
+            <CardBody>
+              <div className="text-sm text-gray-600">Storage</div>
+              {loading ? (
+                <Skeleton className="mt-2 h-6 w-24" />
+              ) : (
+                <div className="mt-1 text-xl">{storagePct != null ? `${Math.round(storagePct)}%` : '—'}</div>
               )}
             </CardBody>
           </Card>
@@ -232,7 +302,51 @@ export default function AdminHome() {
           </Card>
         </div>
 
-        {/* Last updates */}
+        {/* Recent changes feed */}
+        <Card>
+          <CardBody>
+            <div className="mb-2 flex items-center justify-between">
+              <div className="text-sm text-gray-600">Recent Changes</div>
+              <Link href="/admin/audit" className="text-sm text-blue-600 hover:underline">
+                View all
+              </Link>
+            </div>
+            {feedLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+                <Skeleton className="h-4 w-2/3" />
+              </div>
+            ) : feed.length === 0 ? (
+              <div className="text-sm text-gray-500">No recent changes.</div>
+            ) : (
+              <ul className="divide-y divide-gray-200">
+                {feed.map((r, i) => (
+                  <li key={r.id ?? i} className="py-2 text-sm">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <span className="rounded bg-gray-100 px-2 py-0.5 font-mono text-[11px] text-gray-700">
+                        {formatTs(r.at ?? r.created_at)}
+                      </span>
+                      <span className="capitalize text-gray-800">{r.action ?? 'update'}</span>
+                      <span className="text-gray-500">on</span>
+                      <span className="font-medium">{r.table_name ?? '—'}</span>
+                      {r.row_id != null && (
+                        <>
+                          <span className="text-gray-500">row</span>
+                          <span className="font-mono text-gray-800">{String(r.row_id)}</span>
+                        </>
+                      )}
+                      <span className="text-gray-500">by</span>
+                      <span className="font-mono text-gray-800">{r.user_id ?? '—'}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardBody>
+        </Card>
+
+        {/* Last updates + refresh */}
         <Card>
           <CardBody>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -255,7 +369,7 @@ export default function AdminHome() {
                 )}
               </div>
               <div className="flex items-center gap-3">
-                <Button onClick={load} disabled={loading}>
+                <Button onClick={() => { load(); loadFeed() }} disabled={loading}>
                   {loading ? (
                     <span className="inline-flex items-center gap-2">
                       <Spinner /> Refreshing
@@ -270,16 +384,16 @@ export default function AdminHome() {
           </CardBody>
         </Card>
 
-        {/* Manage */}
+        {/* Quick actions */}
         <Card>
           <CardBody>
-            <div className="mb-3 text-sm text-gray-600">Manage</div>
+            <div className="mb-3 text-sm text-gray-600">Quick Actions</div>
             <div className="grid gap-3 sm:grid-cols-3">
               <Link href="/admin/classes">
-                <Button className="w-full">Classes</Button>
+                <Button className="w-full">Add / Edit Classes</Button>
               </Link>
               <Link href="/admin/sections">
-                <Button className="w-full">Sections</Button>
+                <Button className="w-full">Add / Edit Sections</Button>
               </Link>
               <Link href="/admin/audit">
                 <Button className="w-full">Audit Logs</Button>
