@@ -1,7 +1,7 @@
 // src/app/admin/page.tsx
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Card, CardBody, Button } from '@/components/ui'
 import AdminNav from '@/components/AdminNav'
@@ -23,6 +23,22 @@ type Status = {
   hasKey?: boolean
 }
 
+const fmt = new Intl.DateTimeFormat(undefined, {
+  year: 'numeric',
+  month: 'short',
+  day: '2-digit',
+  hour: 'numeric',
+  minute: '2-digit',
+})
+
+function formatTs(ts: string | null) {
+  if (!ts) return '—'
+  // handle ISO like 2025-10-14T11:31:50.504006+00:00
+  const d = new Date(ts)
+  if (Number.isNaN(d.getTime())) return ts
+  return fmt.format(d)
+}
+
 export default function AdminHome() {
   const [s, setS] = useState<Status | null>(null)
   const [at, setAt] = useState<string>('')
@@ -39,23 +55,27 @@ export default function AdminHome() {
     return () => clearInterval(id)
   }, [])
 
+  const classesUpdated = useMemo(() => formatTs(s?.lastUpdate.classes ?? null), [s])
+  const sectionsUpdated = useMemo(() => formatTs(s?.lastUpdate.sections ?? null), [s])
+
   return (
     <main className="min-h-screen bg-white text-gray-900">
       <AdminNav />
-      <div className="mx-auto max-w-6xl px-6 py-8">
-        <h1 className="mb-6 text-2xl font-semibold">Dashboard</h1>
+      <div className="mx-auto max-w-6xl px-6 py-10 space-y-6">
+        <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
 
         {s && s.counts.errors > 0 && (
-          <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
             {s.counts.errors} error(s) detected. Check audit logs for details.
           </div>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-3">
+        {/* KPIs */}
+        <div className="grid gap-6 sm:grid-cols-3">
           <Card>
             <CardBody>
               <div className="text-sm text-gray-600">Database</div>
-              <div className={`text-2xl font-semibold ${s?.db.ok ? 'text-green-600' : 'text-red-600'}`}>
+              <div className={`mt-1 text-2xl font-semibold ${s?.db.ok ? 'text-green-600' : 'text-red-600'}`}>
                 {s?.db.ok ? 'Healthy' : 'Error'}
               </div>
               <div className="mt-1 text-sm text-gray-500">Latency: {s ? `${s.db.latencyMs} ms` : '—'}</div>
@@ -65,7 +85,7 @@ export default function AdminHome() {
           <Card>
             <CardBody>
               <div className="text-sm text-gray-600">Totals</div>
-              <div className="mt-2 grid grid-cols-2 text-sm">
+              <div className="mt-3 grid grid-cols-2 gap-y-2 text-[15px]">
                 <div>Classes</div>
                 <div className="text-right font-medium">{s?.counts.classes ?? '—'}</div>
                 <div>Sections</div>
@@ -77,67 +97,70 @@ export default function AdminHome() {
           <Card>
             <CardBody>
               <div className="text-sm text-gray-600">Errors</div>
-              <div className={`text-2xl font-semibold ${s && s.counts.errors > 0 ? 'text-red-600' : 'text-green-600'}`}>
+              <div className={`mt-1 text-2xl font-semibold ${s && s.counts.errors > 0 ? 'text-red-600' : 'text-green-600'}`}>
                 {s ? s.counts.errors : '—'}
               </div>
             </CardBody>
           </Card>
         </div>
 
-        <Card>
-          <CardBody>
-            <div className="mb-2 text-sm text-gray-600">Diagnostics</div>
-            <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
-              <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
-                <div className="font-medium text-gray-600">Auth</div>
+        {/* Diagnostics */}
+        <div className="grid gap-6 sm:grid-cols-2">
+          <Card>
+            <CardBody>
+              <div className="mb-2 text-sm text-gray-600">Auth</div>
+              <div className="rounded-xl border border-gray-200 bg-white p-4">
                 <div>
-                  User: <span className="font-mono">{s?.auth?.userId || '—'}</span>
+                  User:{' '}
+                  <span className="font-mono">
+                    {s?.auth?.userId || '—'}
+                  </span>
                 </div>
-                <div>
+                <div className="mt-1">
                   Admin:{' '}
                   <span className={`font-semibold ${s?.auth?.isAdmin ? 'text-green-700' : 'text-red-700'}`}>
                     {String(!!s?.auth?.isAdmin)}
                   </span>
                 </div>
               </div>
+            </CardBody>
+          </Card>
 
-              <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
-                <div className="font-medium text-gray-600">Environment</div>
+          <Card>
+            <CardBody>
+              <div className="mb-2 text-sm text-gray-600">Environment</div>
+              <div className="rounded-xl border border-gray-200 bg-white p-4">
                 <div>
                   Supabase OK:{' '}
                   <span className={`font-semibold ${s?.env?.supabaseEnvOk ? 'text-green-700' : 'text-red-700'}`}>
                     {String(!!s?.env?.supabaseEnvOk)}
                   </span>
                 </div>
-                <div>hasUrl: {String(!!(s?.hasUrl ?? s?.env?.hasSupabaseUrl))}</div>
-                <div>hasKey: {String(!!(s?.hasKey ?? s?.env?.hasSupabaseAnon))}</div>
+                <div className="mt-1">hasUrl: {String(!!(s?.hasUrl ?? s?.env?.hasSupabaseUrl))}</div>
+                <div className="mt-1">hasKey: {String(!!(s?.hasKey ?? s?.env?.hasSupabaseAnon))}</div>
               </div>
+            </CardBody>
+          </Card>
+        </div>
 
-              <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
-                <div className="font-medium text-gray-600">Actions</div>
-                <div className="mt-1 flex gap-2">
-                  <Button onClick={load}>Reload</Button>
-                </div>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-
+        {/* Last updates */}
         <Card>
           <CardBody>
-            <div className="flex flex-wrap items-center justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <div className="text-sm text-gray-600">Last Updates</div>
-                <div className="mt-1 text-sm">
+                <div className="mt-2 space-y-1 text-[15px]">
                   <div>
-                    Classes: <span className="font-medium">{s?.lastUpdate.classes ?? '—'}</span>
+                    Classes:{' '}
+                    <span className="font-medium">{classesUpdated}</span>
                   </div>
                   <div>
-                    Sections: <span className="font-medium">{s?.lastUpdate.sections ?? '—'}</span>
+                    Sections:{' '}
+                    <span className="font-medium">{sectionsUpdated}</span>
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <Button onClick={load}>Refresh</Button>
                 <span className="text-xs text-gray-500">as of {at || '—'}</span>
               </div>
@@ -145,10 +168,11 @@ export default function AdminHome() {
           </CardBody>
         </Card>
 
+        {/* Manage */}
         <Card>
           <CardBody>
             <div className="mb-3 text-sm text-gray-600">Manage</div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-3">
               <Link href="/admin/classes">
                 <Button className="w-full">Classes</Button>
               </Link>
