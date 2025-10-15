@@ -1,7 +1,7 @@
 // src/app/admin/classes/page.tsx
 'use client'
 
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import AdminNav from '@/components/AdminNav'
 import { Shell, Card, CardBody, Button, Input, Table, Th, Td, Danger } from '@/components/ui'
 import { api } from '@/lib/fetcher'
@@ -125,15 +125,20 @@ export default function ClassesPage() {
     setEdit({})
   }
   async function saveEdit(row: Row) {
-    const patch: Partial<Row> = {}
-    ;(['title','code','section_id','day','start','end','room','instructor','units'] as const).forEach(k => {
-      if ((edit as any)[k] !== (row as any)[k]) (patch as any)[k] = (edit as any)[k]
-    })
+    const keys: (keyof Row)[] = ['title','code','section_id','day','start','end','room','instructor','units']
+    let patch: Partial<Row> = {}
+    for (const k of keys) {
+      const newVal = edit[k]
+      const oldVal = row[k]
+      if (typeof newVal !== 'undefined' && newVal !== oldVal) {
+        patch = { ...patch, [k]: newVal }
+      }
+    }
     if (Object.keys(patch).length === 0) { cancelEdit(); return }
     try {
       await api(`/api/classes/${row.id}`, { method: 'PATCH', body: JSON.stringify(patch) })
       toast({ kind: 'success', msg: 'Saved' })
-      setRows(rs => rs.map(x => x.id === row.id ? { ...x, ...patch } as Row : x))
+      setRows(rs => rs.map(x => (x.id === row.id ? { ...x, ...patch } as Row : x)))
       cancelEdit()
     } catch {
       toast({ kind: 'error', msg: 'Save failed' })
@@ -190,8 +195,8 @@ export default function ClassesPage() {
                   </thead>
                   <tbody>
                     {pageRows.map(r => (
-                      <>
-                        <tr key={r.id} className="odd:bg-white even:bg-gray-50">
+                      <React.Fragment key={r.id}>
+                        <tr className="odd:bg-white even:bg-gray-50">
                           <Td>{r.id}</Td>
                           <Td>{r.title ?? '—'}</Td>
                           <Td>{r.code ?? '—'}</Td>
@@ -201,8 +206,11 @@ export default function ClassesPage() {
                           <Td>{r.end ?? '—'}</Td>
                           <Td className="whitespace-nowrap">
                             <Button onClick={() => startEdit(r)} className="mr-2">Edit</Button>
-                            <Danger onClick={() => api(`/api/classes/${r.id}`, { method: 'DELETE' })
-                              .then(() => { setRows(rs => rs.filter(x => x.id !== r.id)); })}
+                            <Danger
+                              onClick={async () => {
+                                await api(`/api/classes/${r.id}`, { method: 'DELETE' })
+                                setRows(rs => rs.filter(x => x.id !== r.id))
+                              }}
                             >
                               Delete
                             </Danger>
@@ -266,7 +274,7 @@ export default function ClassesPage() {
                             </td>
                           </tr>
                         )}
-                      </>
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </Table>
@@ -295,10 +303,9 @@ export default function ClassesPage() {
         </Shell>
       </div>
 
-      {/* tiny slide animation */}
       <style jsx global>{`
         .animate-slideDown { animation: slideDown .18s ease-out; }
-        @keyframes slideDown { from { opacity: .0; transform: translateY(-6px) } to { opacity: 1; transform: translateY(0) } }
+        @keyframes slideDown { from { opacity:.0; transform: translateY(-6px) } to { opacity:1; transform: translateY(0) } }
       `}</style>
     </main>
   )
