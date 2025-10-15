@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Card, CardBody, Button } from '@/components/ui'
 import SignOutButton from '@/components/SignOutButton'
+import AdminNav from '@/components/AdminNav'
 
 type Status = {
   db: { ok: boolean; latencyMs: number }
@@ -40,16 +41,17 @@ export default function AdminHome() {
   }, [])
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-white text-gray-900">
+      <AdminNav />
       <div className="mx-auto max-w-6xl px-6 py-8">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
+          <h1 className="text-2xl font-semibold">Dashboard</h1>
           <SignOutButton />
         </div>
 
         {s && s.counts.errors > 0 && (
           <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
-            {s.counts.errors} error(s) detected. Check audit_log for details.
+            {s.counts.errors} error(s) detected. Check audit logs for details.
           </div>
         )}
 
@@ -150,14 +152,19 @@ export default function AdminHome() {
         <Card>
           <CardBody>
             <div className="mb-3 text-sm text-gray-600">Manage</div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
               <Link href="/admin/classes">
                 <Button className="w-full">Classes</Button>
               </Link>
               <Link href="/admin/sections">
                 <Button className="w-full">Sections</Button>
               </Link>
-              <SignOutButton />
+              <Link href="/admin/audit">
+                <Button className="w-full">Audit Logs</Button>
+              </Link>
+              <div className="col-span-2 flex justify-end">
+                <SignOutButton />
+              </div>
             </div>
           </CardBody>
         </Card>
