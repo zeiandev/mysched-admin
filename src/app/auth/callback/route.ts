@@ -19,9 +19,11 @@ export async function POST(req: Request) {
     set('sb-access-token', session?.access_token ?? '', 60 * 60 * 24 * 7)
     set('sb-refresh-token', session?.refresh_token ?? '', 60 * 60 * 24 * 30)
   }
+
   if (event === 'SIGNED_OUT') {
     set('sb-access-token', '', 0)
     set('sb-refresh-token', '', 0)
   }
+
   return NextResponse.json({ ok: true })
 }
