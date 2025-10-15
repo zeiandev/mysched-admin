@@ -10,9 +10,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-  // Next 15: cookies() is async in RSC
+  // Next 15+ requires async cookies
   const store = await cookies()
 
+  // Auth client for user session
   const sb = createServerClient(url, anon, {
     cookies: {
       get(name: string) {
@@ -31,7 +32,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const user = data?.user
   if (!user) redirect('/login?reason=unauthorized')
 
-  // Service-role admin check
+  // Confirm admin user in Supabase “admins” table
   const svc = sbService()
   const { data: row } = await svc
     .from('admins')
@@ -41,5 +42,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   if (!row) redirect('/login?reason=forbidden')
 
-  return <>{children}</>
+  return (
+    <div className="min-h-screen bg-white text-gray-900 antialiased">
+      {children}
+    </div>
+  )
 }
