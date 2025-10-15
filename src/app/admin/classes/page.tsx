@@ -173,16 +173,13 @@ export default function ClassesPage() {
 
   return (
     <main className="min-h-screen bg-white text-gray-900">
-      {/* admin top bar like dashboard */}
       <AdminNav />
 
       <div className="mx-auto max-w-6xl px-6 py-8">
         <Shell title="Classes">
-          {/* Controls */}
           <Card>
             <CardBody>
               <div className="mb-3 flex flex-wrap items-center gap-3">
-                {/* Sections select with skeleton */}
                 {loadingSections ? (
                   <div className="w-40">
                     <Skel h="h-9" />
@@ -237,7 +234,6 @@ export default function ClassesPage() {
                 </Button>
               </div>
 
-              {/* Create row (show skeleton for button during loading to avoid flicker) */}
               <div className="grid gap-3 sm:grid-cols-5">
                 <Input
                   placeholder="Title"
@@ -281,10 +277,8 @@ export default function ClassesPage() {
             </CardBody>
           </Card>
 
-          {/* Table */}
           <Card>
             <CardBody>
-              {/* Header skeleton while loading */}
               {loading ? (
                 <div className="space-y-3">
                   {[...Array(6)].map((_, i) => (
@@ -419,7 +413,6 @@ export default function ClassesPage() {
                     </tbody>
                   </Table>
 
-                  {/* Pagination */}
                   <div className="mt-4 flex flex-wrap items-center gap-4">
                     <div className="flex items-center gap-2">
                       <span className="text-sm">Per page</span>
