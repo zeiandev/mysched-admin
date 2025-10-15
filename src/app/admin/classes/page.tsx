@@ -41,10 +41,6 @@ function Spinner() {
   )
 }
 
-function Skel({ h = 'h-9' }: { h?: string }) {
-  return <div className={`animate-pulse rounded-md bg-gray-200 ${h} w-full`} />
-}
-
 export default function ClassesPage() {
   const [rows, setRows] = useState<Row[]>([])
   const [count, setCount] = useState(0)
@@ -53,16 +49,16 @@ export default function ClassesPage() {
   const [dayFilter, setDayFilter] = useState('all')
   const [qTitle, setQTitle] = useState('')
   const [qCode, setQCode] = useState('')
-  const [draft, setDraft] = useState<Partial<Row>>({})
   const [limit, setLimit] = useState(15)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
   const [loadingSections, setLoadingSections] = useState(false)
-  const debRef = useRef<number | null>(null)
-  const toast = useToast()
 
-  const ctrlInput = 'w-full h-9 rounded-lg border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600'
-  const cellInput = 'w-full h-9 rounded-lg border border-gray-300 bg-white px-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600'
+  // inline editor
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [edit, setEdit] = useState<Partial<Row>>({})
+  const toast = useToast()
+  const deb = useRef<number | null>(null)
 
   const loadSections = useCallback(async () => {
     setLoadingSections(true)
@@ -92,10 +88,11 @@ export default function ClassesPage() {
   useEffect(() => { loadSections() }, [loadSections])
   useEffect(() => { load() }, [load])
 
+  // client filter
   const [filtered, setFiltered] = useState<Row[]>(rows)
   useEffect(() => {
-    if (debRef.current) window.clearTimeout(debRef.current)
-    debRef.current = window.setTimeout(() => {
+    if (deb.current) window.clearTimeout(deb.current)
+    deb.current = window.setTimeout(() => {
       const t = qTitle.trim().toLowerCase()
       const c = qCode.trim().toLowerCase()
       setFiltered(rows.filter(r =>
@@ -103,41 +100,45 @@ export default function ClassesPage() {
         (!c || (r.code ?? '').toLowerCase().includes(c)),
       ))
     }, 250)
-    return () => { if (debRef.current) window.clearTimeout(debRef.current) }
+    return () => { if (deb.current) window.clearTimeout(deb.current) }
   }, [qTitle, qCode, rows])
 
-  function validate(input: Partial<Row>): boolean {
-    const fail = (f: string, ok: boolean) => { if (!ok) toast({ kind: 'error', msg: `${f} is invalid` }); return ok }
-    if (!fail('Title', !!(input.title && input.title.trim()))) return false
-    if (!fail('Code', !!(input.code && input.code.trim()))) return false
-    if (!fail('Section', !!(input.section_id && input.section_id > 0))) return false
-    if (input.start && input.end && !(input.start < input.end)) { toast({ kind: 'error', msg: 'Start must be before end' }); return false }
-    return true
-  }
-
-  const create = async () => {
-    if (!validate(draft)) return
-    try {
-      await api('/api/classes', { method: 'POST', body: JSON.stringify(draft) })
-      setDraft({})
-      await load()
-      toast({ kind: 'success', msg: 'Class created' })
-    } catch { toast({ kind: 'error', msg: 'Create failed' }) }
-  }
-
-  const update = async (id: number, patch: Partial<Row>, revert: () => void) => {
-    try {
-      await api(`/api/classes/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })
-      toast({ kind: 'success', msg: 'Updated' })
-    } catch { toast({ kind: 'error', msg: 'Update failed' }); revert() }
-  }
-
-  const remove = async (id: number) => {
-    try { await api(`/api/classes/${id}`, { method: 'DELETE' }); await load(); toast({ kind: 'success', msg: 'Deleted' }) }
-    catch { toast({ kind: 'error', msg: 'Delete failed' }) }
-  }
-
   const pageRows = useMemo(() => filtered, [filtered])
+
+  // editor helpers
+  function startEdit(r: Row) {
+    setEditingId(r.id)
+    setEdit({
+      title: r.title ?? '',
+      code: r.code ?? '',
+      section_id: r.section_id ?? 0,
+      day: r.day ?? null,
+      start: r.start ?? '',
+      end: r.end ?? '',
+      room: r.room ?? '',
+      instructor: r.instructor ?? '',
+      units: r.units ?? null,
+    })
+  }
+  function cancelEdit() {
+    setEditingId(null)
+    setEdit({})
+  }
+  async function saveEdit(row: Row) {
+    const patch: Partial<Row> = {}
+    ;(['title','code','section_id','day','start','end','room','instructor','units'] as const).forEach(k => {
+      if ((edit as any)[k] !== (row as any)[k]) (patch as any)[k] = (edit as any)[k]
+    })
+    if (Object.keys(patch).length === 0) { cancelEdit(); return }
+    try {
+      await api(`/api/classes/${row.id}`, { method: 'PATCH', body: JSON.stringify(patch) })
+      toast({ kind: 'success', msg: 'Saved' })
+      setRows(rs => rs.map(x => x.id === row.id ? { ...x, ...patch } as Row : x))
+      cancelEdit()
+    } catch {
+      toast({ kind: 'error', msg: 'Save failed' })
+    }
+  }
 
   return (
     <main className="min-h-screen bg-white text-gray-900">
@@ -148,52 +149,25 @@ export default function ClassesPage() {
           <Card>
             <CardBody>
               <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-[160px_160px_1fr_1fr_auto]">
-                {loadingSections ? <Skel /> : (
-                  <select value={sectionId} onChange={e => setSectionId(e.target.value)} className={ctrlInput}>
+                {loadingSections ? (
+                  <div className="h-9 animate-pulse rounded-lg bg-gray-200" />
+                ) : (
+                  <select value={sectionId} onChange={e => setSectionId(e.target.value)}
+                          className="h-9 rounded-lg border border-gray-300 bg-white px-3 text-sm focus:ring-2 focus:ring-blue-600">
                     <option value="all">All Sections</option>
                     {sections.map(s => <option key={s.id} value={s.id}>{s.code ?? `Section ${s.id}`}</option>)}
                   </select>
                 )}
-                <select value={dayFilter} onChange={e => setDayFilter(e.target.value)} className={ctrlInput}>
+                <select value={dayFilter} onChange={e => setDayFilter(e.target.value)}
+                        className="h-9 rounded-lg border border-gray-300 bg-white px-3 text-sm focus:ring-2 focus:ring-blue-600">
                   <option value="all">All Days</option>
                   {DAYS.map(d => <option key={d.n} value={d.n}>{d.label}</option>)}
                 </select>
-                <input value={qTitle} onChange={e => setQTitle(e.target.value)} placeholder="Filter Title" className={ctrlInput} />
-                <input value={qCode} onChange={e => setQCode(e.target.value)} placeholder="Filter Code" className={ctrlInput} />
+                <Input value={qTitle} onChange={e => setQTitle(e.target.value)} placeholder="Filter Title" className="h-9" />
+                <Input value={qCode} onChange={e => setQCode(e.target.value)} placeholder="Filter Code" className="h-9" />
                 <Button onClick={() => { setPage(1); load() }} disabled={loading} className="h-9">
                   {loading ? <span className="inline-flex items-center gap-2"><Spinner /> Refreshing</span> : 'Reload'}
                 </Button>
-              </div>
-
-              <div className="mb-2 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_160px_120px_120px_auto]">
-                <input
-                  placeholder="Title"
-                  value={draft.title ?? ''}
-                  onChange={e => setDraft(d => ({ ...d, title: e.target.value }))}
-                  className={ctrlInput}
-                />
-                <input
-                  placeholder="Code"
-                  value={draft.code ?? ''}
-                  onChange={e => setDraft(d => ({ ...d, code: e.target.value }))}
-                  className={ctrlInput}
-                />
-                <input
-                  placeholder="Section ID"
-                  type="number"
-                  value={draft.section_id ?? ''}
-                  onChange={e => setDraft(d => ({ ...d, section_id: Number(e.target.value) }))}
-                  className={ctrlInput}
-                />
-                <select
-                  value={draft.day?.toString() ?? ''}
-                  onChange={e => setDraft(d => ({ ...d, day: e.target.value ? Number(e.target.value) : null }))}
-                  className={ctrlInput}
-                >
-                  <option value="">Day</option>
-                  {DAYS.map(d => <option key={d.n} value={d.n}>{d.label}</option>)}
-                </select>
-                <Button onClick={create} disabled={loading} className="h-9">Add Class</Button>
               </div>
             </CardBody>
           </Card>
@@ -201,121 +175,101 @@ export default function ClassesPage() {
           <Card>
             <CardBody>
               <div className="overflow-x-auto">
-                <table className="min-w-full table-fixed text-sm">
-                  {/* fixed column widths to align cells and prevent clipping */}
-                  <colgroup>
-                    <col className="w-[60px]" />
-                    <col className="w-[28%]" />
-                    <col className="w-[14%]" />
-                    <col className="w-[10%]" />
-                    <col className="w-[14%]" />
-                    <col className="w-[12%]" />
-                    <col className="w-[12%]" />
-                    <col className="w-[8%]" />
-                  </colgroup>
-                  <thead className="bg-gray-50">
+                <Table>
+                  <thead>
                     <tr>
-                      <Th>ID</Th>
-                      <Th>Title</Th>
-                      <Th>Code</Th>
-                      <Th>Section</Th>
-                      <Th>Day</Th>
-                      <Th>Start</Th>
-                      <Th>End</Th>
-                      <Th>Actions</Th>
+                      <Th className="w-[60px]">ID</Th>
+                      <Th className="w-[28%]">Title</Th>
+                      <Th className="w-[14%]">Code</Th>
+                      <Th className="w-[10%]">Section</Th>
+                      <Th className="w-[14%]">Day</Th>
+                      <Th className="w-[12%]">Start</Th>
+                      <Th className="w-[12%]">End</Th>
+                      <Th className="w-[10%]">Actions</Th>
                     </tr>
                   </thead>
                   <tbody>
                     {pageRows.map(r => (
-                      <tr key={r.id} className="odd:bg-white even:bg-gray-50">
-                        <Td>{r.id}</Td>
-                        <Td>
-                          <input
-                            defaultValue={r.title ?? ''}
-                            onBlur={e => {
-                              const old = r.title; const val = e.target.value
-                              setRows(rs => rs.map(x => x.id === r.id ? { ...x, title: val } : x))
-                              update(r.id, { title: val }, () =>
-                                setRows(rs => rs.map(x => x.id === r.id ? { ...x, title: old } : x)))
-                            }}
-                            className={cellInput}
-                          />
-                        </Td>
-                        <Td>
-                          <input
-                            defaultValue={r.code ?? ''}
-                            onBlur={e => {
-                              const old = r.code; const val = e.target.value
-                              setRows(rs => rs.map(x => x.id === r.id ? { ...x, code: val } : x))
-                              update(r.id, { code: val }, () =>
-                                setRows(rs => rs.map(x => x.id === r.id ? { ...x, code: old } : x)))
-                            }}
-                            className={cellInput}
-                          />
-                        </Td>
-                        <Td>
-                          <input
-                            type="number"
-                            defaultValue={r.section_id ?? 0}
-                            onBlur={e => {
-                              const old = r.section_id; const val = Number(e.target.value)
-                              setRows(rs => rs.map(x => x.id === r.id ? { ...x, section_id: val } : x))
-                              update(r.id, { section_id: val }, () =>
-                                setRows(rs => rs.map(x => x.id === r.id ? { ...x, section_id: old } : x)))
-                            }}
-                            className={cellInput}
-                          />
-                        </Td>
-                        <Td className="align-top">
-                          <div className="relative">
-                            <select
-                              defaultValue={r.day ? String(r.day) : ''}
-                              onChange={e => {
-                                const old = r.day
-                                const val = e.target.value ? Number(e.target.value) : null
-                                setRows(rs => rs.map(x => x.id === r.id ? { ...x, day: val } : x))
-                                update(r.id, { day: val }, () =>
-                                  setRows(rs => rs.map(x => x.id === r.id ? { ...x, day: old } : x)))
-                              }}
-                              className={`${cellInput} pr-7`}
+                      <>
+                        <tr key={r.id} className="odd:bg-white even:bg-gray-50">
+                          <Td>{r.id}</Td>
+                          <Td>{r.title ?? '—'}</Td>
+                          <Td>{r.code ?? '—'}</Td>
+                          <Td>{r.section_id ?? '—'}</Td>
+                          <Td>{nameOfDay(r.day)}</Td>
+                          <Td>{r.start ?? '—'}</Td>
+                          <Td>{r.end ?? '—'}</Td>
+                          <Td className="whitespace-nowrap">
+                            <Button onClick={() => startEdit(r)} className="mr-2">Edit</Button>
+                            <Danger onClick={() => api(`/api/classes/${r.id}`, { method: 'DELETE' })
+                              .then(() => { setRows(rs => rs.filter(x => x.id !== r.id)); })}
                             >
-                              <option value="">—</option>
-                              {DAYS.map(d => <option key={d.n} value={d.n}>{d.label}</option>)}
-                            </select>
-                            <div className="mt-1 text-[11px] text-gray-500">{nameOfDay(r.day)}</div>
-                          </div>
-                        </Td>
-                        <Td>
-                          <input
-                            defaultValue={r.start ?? ''}
-                            onBlur={e => {
-                              const old = r.start; const val = e.target.value
-                              setRows(rs => rs.map(x => x.id === r.id ? { ...x, start: val } : x))
-                              update(r.id, { start: val, end: r.end ?? undefined }, () =>
-                                setRows(rs => rs.map(x => x.id === r.id ? { ...x, start: old } : x)))
-                            }}
-                            className={cellInput}
-                          />
-                        </Td>
-                        <Td>
-                          <input
-                            defaultValue={r.end ?? ''}
-                            onBlur={e => {
-                              const old = r.end; const val = e.target.value
-                              setRows(rs => rs.map(x => x.id === r.id ? { ...x, end: val } : x))
-                              update(r.id, { end: val, start: r.start ?? undefined }, () =>
-                                setRows(rs => rs.map(x => x.id === r.id ? { ...x, end: old } : x)))
-                            }}
-                            className={cellInput}
-                          />
-                        </Td>
-                        <Td>
-                          <Danger onClick={() => remove(r.id)}>Delete</Danger>
-                        </Td>
-                      </tr>
+                              Delete
+                            </Danger>
+                          </Td>
+                        </tr>
+
+                        {editingId === r.id && (
+                          <tr>
+                            <td colSpan={8} className="bg-gray-50">
+                              <div className="animate-slideDown rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                  <div className="space-y-1">
+                                    <label className="text-xs text-gray-600">Title</label>
+                                    <Input value={edit.title ?? ''} onChange={e => setEdit(s => ({ ...s, title: e.target.value }))} />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-xs text-gray-600">Code</label>
+                                    <Input value={edit.code ?? ''} onChange={e => setEdit(s => ({ ...s, code: e.target.value }))} />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-xs text-gray-600">Section ID</label>
+                                    <Input type="number" value={edit.section_id ?? 0}
+                                           onChange={e => setEdit(s => ({ ...s, section_id: Number(e.target.value) }))} />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-xs text-gray-600">Day</label>
+                                    <select
+                                      value={edit.day?.toString() ?? ''}
+                                      onChange={e => setEdit(s => ({ ...s, day: e.target.value ? Number(e.target.value) : null }))}
+                                      className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600"
+                                    >
+                                      <option value="">—</option>
+                                      {DAYS.map(d => <option key={d.n} value={d.n}>{d.label}</option>)}
+                                    </select>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-xs text-gray-600">Start</label>
+                                    <Input value={edit.start ?? ''} onChange={e => setEdit(s => ({ ...s, start: e.target.value }))} />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-xs text-gray-600">End</label>
+                                    <Input value={edit.end ?? ''} onChange={e => setEdit(s => ({ ...s, end: e.target.value }))} />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-xs text-gray-600">Room</label>
+                                    <Input value={edit.room ?? ''} onChange={e => setEdit(s => ({ ...s, room: e.target.value }))} />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-xs text-gray-600">Instructor</label>
+                                    <Input value={edit.instructor ?? ''} onChange={e => setEdit(s => ({ ...s, instructor: e.target.value }))} />
+                                  </div>
+                                </div>
+
+                                <div className="mt-4 flex justify-end gap-2">
+                                  <Button onClick={() => saveEdit(r)} className="min-w-[88px]">Save</Button>
+                                  <Button onClick={cancelEdit} className="min-w-[88px] bg-gray-200 text-gray-900 hover:bg-gray-300">
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </>
                     ))}
                   </tbody>
-                </table>
+                </Table>
               </div>
 
               <div className="mt-4 flex flex-wrap items-center gap-4">
@@ -340,6 +294,12 @@ export default function ClassesPage() {
           </Card>
         </Shell>
       </div>
+
+      {/* tiny slide animation */}
+      <style jsx global>{`
+        .animate-slideDown { animation: slideDown .18s ease-out; }
+        @keyframes slideDown { from { opacity: .0; transform: translateY(-6px) } to { opacity: 1; transform: translateY(0) } }
+      `}</style>
     </main>
   )
 }
