@@ -33,7 +33,6 @@ const fmt = new Intl.DateTimeFormat(undefined, {
 
 function formatTs(ts: string | null) {
   if (!ts) return '—'
-  // handle ISO like 2025-10-14T11:31:50.504006+00:00
   const d = new Date(ts)
   if (Number.isNaN(d.getTime())) return ts
   return fmt.format(d)
@@ -70,7 +69,6 @@ export default function AdminHome() {
           </div>
         )}
 
-        {/* KPIs */}
         <div className="grid gap-6 sm:grid-cols-3">
           <Card>
             <CardBody>
@@ -78,7 +76,9 @@ export default function AdminHome() {
               <div className={`mt-1 text-2xl font-semibold ${s?.db.ok ? 'text-green-600' : 'text-red-600'}`}>
                 {s?.db.ok ? 'Healthy' : 'Error'}
               </div>
-              <div className="mt-1 text-sm text-gray-500">Latency: {s ? `${s.db.latencyMs} ms` : '—'}</div>
+              <div className="mt-1 text-sm text-gray-500">
+                Latency: {s ? `${s.db.latencyMs} ms` : '—'}
+              </div>
             </CardBody>
           </Card>
 
@@ -104,17 +104,13 @@ export default function AdminHome() {
           </Card>
         </div>
 
-        {/* Diagnostics */}
         <div className="grid gap-6 sm:grid-cols-2">
           <Card>
             <CardBody>
               <div className="mb-2 text-sm text-gray-600">Auth</div>
               <div className="rounded-xl border border-gray-200 bg-white p-4">
                 <div>
-                  User:{' '}
-                  <span className="font-mono">
-                    {s?.auth?.userId || '—'}
-                  </span>
+                  User: <span className="font-mono">{s?.auth?.userId || '—'}</span>
                 </div>
                 <div className="mt-1">
                   Admin:{' '}
@@ -143,7 +139,6 @@ export default function AdminHome() {
           </Card>
         </div>
 
-        {/* Last updates */}
         <Card>
           <CardBody>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -151,12 +146,10 @@ export default function AdminHome() {
                 <div className="text-sm text-gray-600">Last Updates</div>
                 <div className="mt-2 space-y-1 text-[15px]">
                   <div>
-                    Classes:{' '}
-                    <span className="font-medium">{classesUpdated}</span>
+                    Classes: <span className="font-medium">{classesUpdated}</span>
                   </div>
                   <div>
-                    Sections:{' '}
-                    <span className="font-medium">{sectionsUpdated}</span>
+                    Sections: <span className="font-medium">{sectionsUpdated}</span>
                   </div>
                 </div>
               </div>
@@ -168,7 +161,6 @@ export default function AdminHome() {
           </CardBody>
         </Card>
 
-        {/* Manage */}
         <Card>
           <CardBody>
             <div className="mb-3 text-sm text-gray-600">Manage</div>
