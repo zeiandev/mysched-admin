@@ -13,19 +13,17 @@ import { logErr } from '@/lib/log'
 const timeRe = /^([01]\d|2[0-3]):([0-5]\d)$/
 const DayEnum = z.enum(['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])
 
-const ClassCreateSchema = z
-  .object({
-    title: z.string().trim().min(1, 'Title is required').max(120, 'Max 120 characters'),
-    code: z.string().trim().min(1, 'Code is required').max(20, 'Max 20 characters'),
-    section_id: z.coerce.number().int().positive('Section id must be > 0'),
-    day: DayEnum.nullable().optional(),
-    start: z.string().regex(timeRe, 'Start must be HH:MM'),
-    end: z.string().regex(timeRe, 'End must be HH:MM'),
-    units: z.coerce.number().int().min(0).max(12).nullable().optional(),
-    room: z.string().trim().max(40).nullable().optional(),
-    instructor: z.string().trim().max(80).nullable().optional(),
-  })
-  .refine(({ start, end }) => start < end, { message: 'Start must be before end', path: ['end'] })
+const ClassCreateSchema = z.object({
+  title: z.string().trim().min(1, 'Title is required').max(120, 'Max 120 characters'),
+  code: z.string().trim().min(1, 'Code is required').max(20, 'Max 20 characters'),
+  section_id: z.coerce.number().int().positive('Section id must be > 0'),
+  day: DayEnum.nullable().optional(),
+  start: z.string().regex(timeRe, 'Start must be HH:MM'),
+  end: z.string().regex(timeRe, 'End must be HH:MM'),
+  units: z.coerce.number().int().min(0).max(12).nullable().optional(),
+  room: z.string().trim().max(40).nullable().optional(),
+  instructor: z.string().trim().max(80).nullable().optional(),
+}).refine(({ start, end }) => start < end, { message: 'Start must be before end', path: ['end'] })
 
 function json<T>(data: T, status = 200) {
   const res = NextResponse.json(data, { status })
@@ -34,21 +32,37 @@ function json<T>(data: T, status = 200) {
   return res
 }
 
+// map "1..7" -> "Mon..Sun" to tolerate existing UI filter values
+const DAY_BY_NUM = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] as const
+function normalizeDayParam(v: string | null): string | null {
+  if (!v || v === 'all') return null
+  if (/^[1-7]$/.test(v)) return DAY_BY_NUM[Number(v) - 1]
+  return v // assume already enum text
+}
+
 export async function GET(req: NextRequest) {
   try {
     const sb = sbService()
     const sp = new URL(req.url).searchParams
     const section = sp.get('section_id')
-    const day = sp.get('day')
+    const dayParam = normalizeDayParam(sp.get('day'))
     const page = Math.max(1, Number(sp.get('page') || '1') || 1)
     const limitRaw = Number(sp.get('limit') || '0')
     const limit = Math.min(200, limitRaw > 0 ? limitRaw : 100)
     const from = (page - 1) * limit
     const to = from + limit - 1
 
-    let q = sb.from('classes').select('*', { count: 'exact' }).order('id')
+    let q = sb
+      .from('classes')
+      .select('*', { count: 'exact' })
+      // sort by day then time, with id as a stable tiebreaker
+      .order('day',   { ascending: true, nullsFirst: true })
+      .order('start', { ascending: true, nullsFirst: true })
+      .order('id')
+
     if (section && section !== 'all') q = q.eq('section_id', Number(section))
-    if (day && day !== 'all') q = q.eq('day', day) // day is enum text
+    if (dayParam) q = q.eq('day', dayParam)
+
     q = q.range(from, to)
 
     const { data, error, count } = await q
@@ -83,6 +97,5 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH() {
-  const res = json({ error: 'Use /api/classes/[id] for updates' }, 405)
-  return res
+  return json({ error: 'Use /api/classes/[id] for updates' }, 405)
 }

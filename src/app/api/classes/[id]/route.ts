@@ -10,23 +10,22 @@ import { logErr } from '@/lib/log'
 const timeRe = /^([01]\d|2[0-3]):([0-5]\d)$/
 const DayEnum = z.enum(['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])
 
-const ClassPatchSchema = z
-  .object({
-    title: z.string().trim().min(1, 'Title is required').max(120).optional(),
-    code: z.string().trim().min(1, 'Code is required').max(20).optional(),
-    section_id: z.coerce.number().int().positive('Section id must be > 0').optional(),
-    day: DayEnum.nullable().optional(),
-    start: z.string().regex(timeRe, 'Start must be HH:MM').optional(),
-    end: z.string().regex(timeRe, 'End must be HH:MM').optional(),
-    units: z.coerce.number().int().min(0).max(12).nullable().optional(),
-    room: z.string().trim().max(40).nullable().optional(),
-    instructor: z.string().trim().max(80).nullable().optional(),
-  })
-  .refine(d => Object.keys(d).length > 0, { message: 'Nothing to update' })
-  .refine(d => (d.start && d.end ? d.start < d.end : true), {
-    message: 'Start must be before end',
-    path: ['end'],
-  })
+const ClassPatchSchema = z.object({
+  title: z.string().trim().min(1, 'Title is required').max(120).optional(),
+  code: z.string().trim().min(1, 'Code is required').max(20).optional(),
+  section_id: z.coerce.number().int().positive('Section id must be > 0').optional(),
+  day: DayEnum.nullable().optional(),
+  start: z.string().regex(timeRe, 'Start must be HH:MM').optional(),
+  end: z.string().regex(timeRe, 'End must be HH:MM').optional(),
+  units: z.coerce.number().int().min(0).max(12).nullable().optional(),
+  room: z.string().trim().max(40).nullable().optional(),
+  instructor: z.string().trim().max(80).nullable().optional(),
+})
+.refine(d => Object.keys(d).length > 0, { message: 'Nothing to update' })
+.refine(d => (d.start && d.end ? d.start < d.end : true), {
+  message: 'Start must be before end',
+  path: ['end'],
+})
 
 function json<T>(data: T, status = 200) {
   const res = NextResponse.json(data, { status })
