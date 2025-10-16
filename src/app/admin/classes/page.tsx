@@ -7,10 +7,12 @@ import { Shell, Card, CardBody, Button, Input, Table, Th, Td, Danger } from '@/c
 import { api } from '@/lib/fetcher'
 import { useToast } from '@/components/toast'
 
+type Dow = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun'
+
 type Row = {
   id: number
   section_id: number | null
-  day: number | null
+  day: Dow | null
   start: string | null
   end: string | null
   code: string | null
@@ -21,16 +23,16 @@ type Row = {
 }
 type Section = { id: number; code: string | null }
 
-const DAYS = [
-  { n: 1, label: 'Monday' },
-  { n: 2, label: 'Tuesday' },
-  { n: 3, label: 'Wednesday' },
-  { n: 4, label: 'Thursday' },
-  { n: 5, label: 'Friday' },
-  { n: 6, label: 'Saturday' },
-  { n: 7, label: 'Sunday' },
+const DAYS: { v: Dow; label: string }[] = [
+  { v: 'Mon', label: 'Monday' },
+  { v: 'Tue', label: 'Tuesday' },
+  { v: 'Wed', label: 'Wednesday' },
+  { v: 'Thu', label: 'Thursday' },
+  { v: 'Fri', label: 'Friday' },
+  { v: 'Sat', label: 'Saturday' },
+  { v: 'Sun', label: 'Sunday' },
 ]
-const nameOfDay = (n?: number | null) => DAYS.find(d => d.n === (n ?? 0))?.label ?? '—'
+const labelOfDay = (d?: Dow | null) => DAYS.find(x => x.v === d)?.label ?? '—'
 
 function Spinner() {
   return (
@@ -46,7 +48,7 @@ export default function ClassesPage() {
   const [count, setCount] = useState(0)
   const [sections, setSections] = useState<Section[]>([])
   const [sectionId, setSectionId] = useState('all')
-  const [dayFilter, setDayFilter] = useState('all')
+  const [dayFilter, setDayFilter] = useState<'all' | Dow>('all')
   const [qTitle, setQTitle] = useState('')
   const [qCode, setQCode] = useState('')
   const [limit, setLimit] = useState(15)
@@ -163,10 +165,10 @@ export default function ClassesPage() {
                     {sections.map(s => <option key={s.id} value={s.id}>{s.code ?? `Section ${s.id}`}</option>)}
                   </select>
                 )}
-                <select value={dayFilter} onChange={e => setDayFilter(e.target.value)}
+                <select value={dayFilter} onChange={e => setDayFilter(e.target.value as 'all' | Dow)}
                         className="h-9 rounded-lg border border-gray-300 bg-white px-3 text-sm focus:ring-2 focus:ring-blue-600">
                   <option value="all">All Days</option>
-                  {DAYS.map(d => <option key={d.n} value={d.n}>{d.label}</option>)}
+                  {DAYS.map(d => <option key={d.v} value={d.v}>{d.label}</option>)}
                 </select>
                 <Input value={qTitle} onChange={e => setQTitle(e.target.value)} placeholder="Filter Title" className="h-9" />
                 <Input value={qCode} onChange={e => setQCode(e.target.value)} placeholder="Filter Code" className="h-9" />
@@ -201,7 +203,7 @@ export default function ClassesPage() {
                           <Td>{r.title ?? '—'}</Td>
                           <Td>{r.code ?? '—'}</Td>
                           <Td>{r.section_id ?? '—'}</Td>
-                          <Td>{nameOfDay(r.day)}</Td>
+                          <Td>{labelOfDay(r.day)}</Td>
                           <Td>{r.start ?? '—'}</Td>
                           <Td>{r.end ?? '—'}</Td>
                           <Td className="whitespace-nowrap">
@@ -238,12 +240,12 @@ export default function ClassesPage() {
                                   <div className="space-y-1">
                                     <label className="text-xs text-gray-600">Day</label>
                                     <select
-                                      value={edit.day?.toString() ?? ''}
-                                      onChange={e => setEdit(s => ({ ...s, day: e.target.value ? Number(e.target.value) : null }))}
+                                      value={(edit.day as Dow | null) ?? ''}
+                                      onChange={e => setEdit(s => ({ ...s, day: e.target.value ? (e.target.value as Dow) : null }))}
                                       className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600"
                                     >
                                       <option value="">—</option>
-                                      {DAYS.map(d => <option key={d.n} value={d.n}>{d.label}</option>)}
+                                      {DAYS.map(d => <option key={d.v} value={d.v}>{d.label}</option>)}
                                     </select>
                                   </div>
                                   <div className="space-y-1">
